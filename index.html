@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Waypoints — Travel Log</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1c2b3a;
+    --ink-soft:#4a5a68;
+    --paper:#f6f1e4;
+    --paper-alt:#efe7d2;
+    --card:#fffdf7;
+    --teal:#3c6e71;
+    --teal-dark:#2a4f52;
+    --gold:#c9a227;
+    --gold-dark:#9c7f1c;
+    --rust:#a34a3a;
+    --line:#ddd0ac;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Fraunces',serif;margin:0 0 .3em 0;letter-spacing:-0.01em;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  header.top{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; background:var(--ink); color:var(--paper);
+    position:sticky; top:0; z-index:500;
+  }
+  header.top h1{color:var(--paper); font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:8px;}
+  header.top h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);display:inline-block;}
+  nav.tabs{display:flex; gap:4px;}
+  nav.tabs button{
+    background:none; border:none; color:var(--paper); opacity:.6;
+    font-family:'Inter',sans-serif; font-size:.95rem; font-weight:500;
+    padding:8px 14px; border-radius:20px; cursor:pointer; transition:.15s;
+  }
+  nav.tabs button:hover{opacity:.9;}
+  nav.tabs button.active{opacity:1; background:rgba(255,255,255,0.12);}
+
+  main{max-width:920px; margin:0 auto; padding:20px 16px 80px;}
+  .view{display:none;}
+  .view.active{display:block;}
+
+  /* --- Add trip button + form --- */
+  .add-bar{display:flex; justify-content:flex-end; margin-bottom:16px;}
+  #addTripBtn{
+    background:var(--teal); color:#fff; border:none; padding:10px 18px;
+    border-radius:24px; font-size:.95rem; font-weight:600; cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  }
+  #addTripBtn:hover{background:var(--teal-dark);}
+
+  .panel{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; margin-bottom:20px;
+  }
+  .form-row{display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap;}
+  .form-field{flex:1; min-width:140px; display:flex; flex-direction:column; gap:4px;}
+  .form-field.full{flex-basis:100%;}
+  label{font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); font-weight:600;}
+  input, textarea, select{
+    font-family:'Inter',sans-serif; font-size:.95rem; padding:8px 10px;
+    border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink);
+  }
+  input:focus, textarea:focus, select:focus{outline:2px solid var(--teal); outline-offset:1px;}
+  textarea{resize:vertical; min-height:60px;}
+
+  .search-row{display:flex; gap:8px;}
+  .search-row input{flex:1;}
+  .btn{
+    border:none; border-radius:6px; padding:8px 14px; font-weight:600; cursor:pointer;
+    font-family:'Inter',sans-serif; font-size:.9rem;
+  }
+  .btn-teal{background:var(--teal); color:#fff;}
+  .btn-teal:hover{background:var(--teal-dark);}
+  .btn-ghost{background:none; border:1px solid var(--line); color:var(--ink);}
+  .btn-ghost:hover{background:var(--paper-alt);}
+  .btn-rust{background:none; color:var(--rust); border:1px solid var(--rust);}
+  .btn-rust:hover{background:var(--rust); color:#fff;}
+
+  #geoResults{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:180px; overflow-y:auto; background:#fff; display:none;}
+  #geoResults div{padding:8px 10px; cursor:pointer; font-size:.9rem; border-bottom:1px solid var(--line);}
+  #geoResults div:last-child{border-bottom:none;}
+  #geoResults div:hover{background:var(--paper-alt);}
+  .geo-status{font-size:.8rem; color:var(--ink-soft); margin-top:4px;}
+
+  .form-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:6px;}
+
+  /* --- Trip list --- */
+  .section-title{display:flex; align-items:baseline; gap:10px; margin:26px 0 10px;}
+  .section-title h2{font-size:1.15rem;}
+  .section-title .count{font-family:'JetBrains Mono',monospace; font-size:.8rem; color:var(--ink-soft);}
+  .empty-note{color:var(--ink-soft); font-size:.9rem; padding:14px 0;}
+
+  .trip-card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; margin-bottom:10px; display:flex; gap:14px; align-items:flex-start;
+    position:relative;
+  }
+  .trip-card.upcoming{border-left:4px solid var(--gold);}
+  .trip-card.past{border-left:4px solid var(--teal);}
+  .trip-main{flex:1; min-width:0;}
+  .trip-main h3{font-size:1.05rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .stamp{
+    font-family:'JetBrains Mono',monospace; font-size:.68rem; font-weight:700;
+    border:1.5px dashed var(--teal-dark); color:var(--teal-dark); border-radius:50%;
+    width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+    transform:rotate(-8deg); flex-shrink:0;
+  }
+  .trip-meta{font-size:.82rem; color:var(--ink-soft); margin-top:2px; display:flex; gap:10px; flex-wrap:wrap;}
+  .trip-notes{font-size:.88rem; margin-top:8px; color:var(--ink); white-space:pre-wrap;}
+  .trip-actions{display:flex; flex-direction:column; gap:6px;}
+  .trip-actions button{font-size:.75rem; padding:5px 10px;}
+
+  /* --- Map --- */
+  #map{height:70vh; min-height:420px; border-radius:var(--radius); border:1px solid var(--line);}
+  .legend{display:flex; gap:18px; margin-top:10px; font-size:.85rem; color:var(--ink-soft);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .swatch{width:12px;height:12px;border-radius:50%; display:inline-block;}
+  .swatch.past{background:var(--teal); border:2px solid var(--teal-dark);}
+  .swatch.upcoming{background:rgba(201,162,39,.5); border:2px dashed var(--gold-dark);}
+
+  /* --- Stats --- */
+  .stat-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:16px; margin-bottom:28px;}
+  .stat-stamp{
+    background:var(--card); border:1px solid var(--line); border-radius:50%;
+    aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border:2px dashed var(--teal); position:relative;
+  }
+  .stat-stamp:nth-child(even){border-color:var(--gold); transform:rotate(2deg);}
+  .stat-stamp:nth-child(odd){transform:rotate(-2deg);}
+  .stat-num{font-family:'JetBrains Mono',monospace; font-size:1.8rem; font-weight:700; color:var(--ink);}
+  .stat-label{font-size:.7rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-top:2px; text-align:center; padding:0 8px;}
+
+  .breakdown{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:18px;}
+  .breakdown h3{font-size:.95rem; margin-bottom:10px;}
+  .bar-row{display:flex; align-items:center; gap:10px; margin-bottom:6px; font-size:.85rem;}
+  .bar-label{width:130px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .bar-track{flex:1; background:var(--paper-alt); border-radius:4px; height:14px; overflow:hidden;}
+  .bar-fill{background:var(--teal); height:100%; border-radius:4px;}
+  .bar-count{font-family:'JetBrains Mono',monospace; width:26px; text-align:right; flex-shrink:0;}
+
+  footer{text-align:center; font-size:.75rem; color:var(--ink-soft); padding:20px; opacity:.7;}
+
+  @media (max-width:560px){
+    header.top{padding:12px 14px;}
+    header.top h1{font-size:1.05rem;}
+    nav.tabs button{padding:7px 10px; font-size:.85rem;}
+    .trip-card{flex-direction:column;}
+    .trip-actions{flex-direction:row;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <h1><span class="dot"></span>Waypoints</h1>
+  <nav class="tabs">
+    <button data-view="trips" class="active">Trips</button>
+    <button data-view="map">Map</button>
+    <button data-view="stats">Stats</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- TRIPS VIEW -->
+  <section id="view-trips" class="view active">
+    <div class="add-bar">
+      <button id="addTripBtn">+ Log a trip</button>
+    </div>
+
+    <div class="panel" id="tripForm" style="display:none;">
+      <h2 id="formTitle" style="font-size:1.1rem;">Log a trip</h2>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Search for a place</label>
+          <div class="search-row">
+            <input type="text" id="placeSearch" placeholder="e.g. Rome, Italy">
+            <button class="btn btn-teal" id="searchBtn" type="button">Search</button>
+          </div>
+          <div id="geoResults"></div>
+          <div class="geo-status" id="geoStatus"></div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Display name</label>
+          <input type="text" id="fPlace" placeholder="Name as you want it to appear">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label>Latitude</label>
+          <input type="number" step="any" id="fLat">
+        </div>
+        <div class="form-field">
+          <label>Longitude</label>
+          <input type="number" step="any" id="fLng">
+        </div>
+        <div class="form-field">
+          <label>Country</label>
+          <input type="text" id="fCountry">
+        </div>
+        <div class="form-field">
+          <label>Continent</label>
+          <select id="fContinent">
+            <option value="">—</option>
+            <option>Africa</option>
+            <option>Antarctica</option>
+            <option>Asia</option>
+            <option>Europe</option>
+            <option>North America</option>
+            <option>Oceania</option>
+            <option>South America</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field">
+          <label>Start date</label>
+          <input type="date" id="fStart">
+        </div>
+        <div class="form-field">
+          <label>End date</label>
+          <input type="date" id="fEnd">
+        </div>
+        <div class="form-field">
+          <label>Went with</label>
+          <input type="text" id="fCompanions" placeholder="e.g. Sarah, Mum">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Notes</label>
+          <textarea id="fNotes" placeholder="Anything worth remembering"></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="cancelForm" type="button">Cancel</button>
+        <button class="btn btn-teal" id="saveTrip" type="button">Save trip</button>
+      </div>
+    </div>
+
+    <div class="section-title"><h2>Upcoming</h2><span class="count mono" id="upcomingCount"></span></div>
+    <div id="upcomingList"></div>
+
+    <div class="section-title"><h2>Past</h2><span class="count mono" id="pastCount"></span></div>
+    <div id="pastList"></div>
+  </section>
+
+  <!-- MAP VIEW -->
+  <section id="view-map" class="view">
+    <div id="map"></div>
+    <div class="legend">
+      <span><span class="swatch past"></span>Been there</span>
+      <span><span class="swatch upcoming"></span>Upcoming</span>
+    </div>
+  </section>
+
+  <!-- STATS VIEW -->
+  <section id="view-stats" class="view">
+    <div class="stat-grid" id="statGrid"></div>
+    <div class="breakdown">
+      <h3>Visits per place</h3>
+      <div id="visitsBreakdown"></div>
+    </div>
+    <div class="breakdown">
+      <h3>Trips per year</h3>
+      <div id="yearBreakdown"></div>
+    </div>
+    <div class="breakdown">
+      <h3>By continent</h3>
+      <div id="continentBreakdown"></div>
+    </div>
+  </section>
+
+</main>
+
+<footer>Stored locally in this browser · your data never leaves your device</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ---------------------------------------------------------------
+   DATA LAYER
+--------------------------------------------------------------- */
+const STORAGE_KEY = 'waypoints.trips.v1';
+
+function loadTrips(){
+  try{
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  }catch(e){ return []; }
+}
+function saveTrips(trips){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+}
+let trips = loadTrips();
+
+function uid(){
+  return 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
+}
+function todayStr(){
+  return new Date().toISOString().slice(0,10);
+}
+function isUpcoming(trip){
+  return trip.endDate >= todayStr();
+}
+function dayCount(start, end){
+  const a = new Date(start), b = new Date(end);
+  return Math.round((b - a) / 86400000) + 1;
+}
+function placeKey(trip){
+  // group "same place" by rounded coordinates so re-visits count correctly
+  return Math.round(trip.lat*100)/100 + ',' + Math.round(trip.lng*100)/100;
+}
+
+/* Minimal country -> continent lookup. Extend as needed. */
+const CONTINENT_MAP = {
+  "united kingdom":"Europe","england":"Europe","scotland":"Europe","wales":"Europe","northern ireland":"Europe",
+  "ireland":"Europe","france":"Europe","germany":"Europe","spain":"Europe","italy":"Europe","portugal":"Europe",
+  "netherlands":"Europe","belgium":"Europe","switzerland":"Europe","austria":"Europe","greece":"Europe",
+  "poland":"Europe","czechia":"Europe","czech republic":"Europe","hungary":"Europe","sweden":"Europe",
+  "norway":"Europe","denmark":"Europe","finland":"Europe","iceland":"Europe","croatia":"Europe","slovenia":"Europe",
+  "slovakia":"Europe","romania":"Europe","bulgaria":"Europe","serbia":"Europe","montenegro":"Europe",
+  "bosnia and herzegovina":"Europe","albania":"Europe","north macedonia":"Europe","estonia":"Europe",
+  "latvia":"Europe","lithuania":"Europe","malta":"Europe","cyprus":"Europe","luxembourg":"Europe","monaco":"Europe",
+  "ukraine":"Europe","moldova":"Europe","belarus":"Europe","russia":"Europe","san marino":"Europe",
+  "andorra":"Europe","liechtenstein":"Europe","vatican city":"Europe","kosovo":"Europe",
+  "united states":"North America","united states of america":"North America","canada":"North America",
+  "mexico":"North America","cuba":"North America","jamaica":"North America","bahamas":"North America",
+  "costa rica":"North America","panama":"North America","guatemala":"North America","belize":"North America",
+  "honduras":"North America","nicaragua":"North America","el salvador":"North America",
+  "dominican republic":"North America","haiti":"North America","trinidad and tobago":"North America",
+  "barbados":"North America",
+  "brazil":"South America","argentina":"South America","chile":"South America","peru":"South America",
+  "colombia":"South America","ecuador":"South America","bolivia":"South America","uruguay":"South America",
+  "paraguay":"South America","venezuela":"South America","guyana":"South America","suriname":"South America",
+  "japan":"Asia","china":"Asia","south korea":"Asia","north korea":"Asia","india":"Asia","thailand":"Asia",
+  "vietnam":"Asia","indonesia":"Asia","malaysia":"Asia","singapore":"Asia","philippines":"Asia","cambodia":"Asia",
+  "laos":"Asia","myanmar":"Asia","nepal":"Asia","sri lanka":"Asia","bangladesh":"Asia","pakistan":"Asia",
+  "united arab emirates":"Asia","qatar":"Asia","saudi arabia":"Asia","israel":"Asia","jordan":"Asia",
+  "lebanon":"Asia","turkey":"Asia","türkiye":"Asia","georgia":"Asia","armenia":"Asia","azerbaijan":"Asia",
+  "kazakhstan":"Asia","uzbekistan":"Asia","mongolia":"Asia","taiwan":"Asia","hong kong":"Asia","macau":"Asia",
+  "oman":"Asia","kuwait":"Asia","bahrain":"Asia","iraq":"Asia","iran":"Asia","afghanistan":"Asia",
+  "egypt":"Africa","morocco":"Africa","tunisia":"Africa","algeria":"Africa","libya":"Africa","south africa":"Africa",
+  "kenya":"Africa","tanzania":"Africa","uganda":"Africa","ethiopia":"Africa","ghana":"Africa","nigeria":"Africa",
+  "senegal":"Africa","namibia":"Africa","botswana":"Africa","zimbabwe":"Africa","zambia":"Africa",
+  "mozambique":"Africa","rwanda":"Africa","mauritius":"Africa","seychelles":"Africa","madagascar":"Africa",
+  "cape verde":"Africa","cabo verde":"Africa",
+  "australia":"Oceania","new zealand":"Oceania","fiji":"Oceania","papua new guinea":"Oceania",
+  "samoa":"Oceania","tonga":"Oceania","vanuatu":"Oceania","new caledonia":"Oceania","french polynesia":"Oceania",
+  "antarctica":"Antarctica"
+};
+function guessContinent(country){
+  if(!country) return '';
+  return CONTINENT_MAP[country.trim().toLowerCase()] || '';
+}
+
+/* ---------------------------------------------------------------
+   VIEW SWITCHING
+--------------------------------------------------------------- */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'map'){ initMapIfNeeded(); renderMap(); }
+    if(btn.dataset.view === 'stats'){ renderStats(); }
+  });
+});
+
+/* ---------------------------------------------------------------
+   FORM HANDLING
+--------------------------------------------------------------- */
+const form = document.getElementById('tripForm');
+let editingId = null;
+
+document.getElementById('addTripBtn').addEventListener('click', ()=>{
+  editingId = null;
+  clearForm();
+  document.getElementById('formTitle').textContent = 'Log a trip';
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('cancelForm').addEventListener('click', ()=>{
+  form.style.display = 'none';
+});
+
+function clearForm(){
+  ['placeSearch','fPlace','fLat','fLng','fCountry','fStart','fEnd','fCompanions','fNotes'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('fContinent').value = '';
+  document.getElementById('geoResults').style.display = 'none';
+  document.getElementById('geoStatus').textContent = '';
+}
+
+/* Nominatim geocoding — free, no API key, low request volume (personal use) */
+document.getElementById('searchBtn').addEventListener('click', doGeocode);
+document.getElementById('placeSearch').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); doGeocode(); }
+});
+
+async function doGeocode(){
+  const q = document.getElementById('placeSearch').value.trim();
+  const statusEl = document.getElementById('geoStatus');
+  const resultsEl = document.getElementById('geoResults');
+  if(!q){ return; }
+  statusEl.textContent = 'Searching…';
+  resultsEl.style.display = 'none';
+  resultsEl.innerHTML = '';
+  try{
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=' + encodeURIComponent(q));
+    const data = await res.json();
+    if(!data.length){
+      statusEl.textContent = 'No matches — you can still fill in the fields manually below.';
+      return;
+    }
+    statusEl.textContent = 'Select a match:';
+    data.forEach(r=>{
+      const div = document.createElement('div');
+      div.textContent = r.display_name;
+      div.addEventListener('click', ()=>{
+        document.getElementById('fPlace').value = r.display_name.split(',')[0];
+        document.getElementById('fLat').value = parseFloat(r.lat).toFixed(5);
+        document.getElementById('fLng').value = parseFloat(r.lon).toFixed(5);
+        const country = (r.address && r.address.country) || '';
+        document.getElementById('fCountry').value = country;
+        document.getElementById('fContinent').value = guessContinent(country);
+        resultsEl.style.display = 'none';
+        statusEl.textContent = 'Selected — adjust anything below if needed.';
+      });
+      resultsEl.appendChild(div);
+    });
+    resultsEl.style.display = 'block';
+  }catch(e){
+    statusEl.textContent = 'Search failed (offline?) — fill in the fields manually below.';
+  }
+}
+
+document.getElementById('saveTrip').addEventListener('click', ()=>{
+  const place = document.getElementById('fPlace').value.trim();
+  const lat = parseFloat(document.getElementById('fLat').value);
+  const lng = parseFloat(document.getElementById('fLng').value);
+  const start = document.getElementById('fStart').value;
+  const end = document.getElementById('fEnd').value || start;
+
+  if(!place || isNaN(lat) || isNaN(lng) || !start){
+    alert('Please fill in at least a place, coordinates, and a start date.');
+    return;
+  }
+  if(end < start){
+    alert('End date is before the start date.');
+    return;
+  }
+
+  const tripData = {
+    id: editingId || uid(),
+    place,
+    lat, lng,
+    country: document.getElementById('fCountry').value.trim(),
+    continent: document.getElementById('fContinent').value,
+    startDate: start,
+    endDate: end,
+    companions: document.getElementById('fCompanions').value.trim(),
+    notes: document.getElementById('fNotes').value.trim()
+  };
+
+  if(editingId){
+    trips = trips.map(t => t.id === editingId ? tripData : t);
+  }else{
+    trips.push(tripData);
+  }
+  saveTrips(trips);
+  editingId = null;
+  form.style.display = 'none';
+  renderTrips();
+});
+
+/* ---------------------------------------------------------------
+   TRIP LIST RENDERING
+--------------------------------------------------------------- */
+function visitCounts(){
+  const counts = {};
+  trips.forEach(t=>{
+    const k = placeKey(t);
+    counts[k] = (counts[k]||0) + 1;
+  });
+  return counts;
+}
+
+function tripCard(trip, counts){
+  const upcoming = isUpcoming(trip);
+  const count = counts[placeKey(trip)];
+  const days = dayCount(trip.startDate, trip.endDate);
+  const div = document.createElement('div');
+  div.className = 'trip-card ' + (upcoming ? 'upcoming' : 'past');
+  div.innerHTML = `
+    <div class="trip-main">
+      <h3>${escapeHtml(trip.place)} ${count > 1 ? `<span class="stamp">×${count}</span>` : ''}</h3>
+      <div class="trip-meta">
+        <span class="mono">${trip.startDate} → ${trip.endDate}</span>
+        <span>${days} day${days!==1?'s':''}</span>
+        ${trip.country ? `<span>${escapeHtml(trip.country)}</span>` : ''}
+        ${trip.companions ? `<span>with ${escapeHtml(trip.companions)}</span>` : ''}
+      </div>
+      ${trip.notes ? `<div class="trip-notes">${escapeHtml(trip.notes)}</div>` : ''}
+    </div>
+    <div class="trip-actions">
+      <button class="btn btn-ghost" data-action="edit" data-id="${trip.id}">Edit</button>
+      <button class="btn btn-rust" data-action="delete" data-id="${trip.id}">Delete</button>
+    </div>
+  `;
+  return div;
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function renderTrips(){
+  const counts = visitCounts();
+  const upcoming = trips.filter(isUpcoming).sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const past = trips.filter(t=>!isUpcoming(t)).sort((a,b)=>b.startDate.localeCompare(a.startDate));
+
+  const upcomingList = document.getElementById('upcomingList');
+  const pastList = document.getElementById('pastList');
+  upcomingList.innerHTML = '';
+  pastList.innerHTML = '';
+
+  document.getElementById('upcomingCount').textContent = upcoming.length;
+  document.getElementById('pastCount').textContent = past.length;
+
+  if(!upcoming.length){
+    upcomingList.innerHTML = '<div class="empty-note">Nothing booked yet. Log a future trip above.</div>';
+  }else{
+    upcoming.forEach(t => upcomingList.appendChild(tripCard(t, counts)));
+  }
+  if(!past.length){
+    pastList.innerHTML = '<div class="empty-note">No past trips logged yet.</div>';
+  }else{
+    past.forEach(t => pastList.appendChild(tripCard(t, counts)));
+  }
+}
+
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-action]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  if(btn.dataset.action === 'delete'){
+    if(confirm('Delete this trip?')){
+      trips = trips.filter(t=>t.id !== id);
+      saveTrips(trips);
+      renderTrips();
+    }
+  }
+  if(btn.dataset.action === 'edit'){
+    const t = trips.find(t=>t.id === id);
+    if(!t) return;
+    editingId = id;
+    document.getElementById('fPlace').value = t.place;
+    document.getElementById('fLat').value = t.lat;
+    document.getElementById('fLng').value = t.lng;
+    document.getElementById('fCountry').value = t.country;
+    document.getElementById('fContinent').value = t.continent;
+    document.getElementById('fStart').value = t.startDate;
+    document.getElementById('fEnd').value = t.endDate;
+    document.getElementById('fCompanions').value = t.companions;
+    document.getElementById('fNotes').value = t.notes;
+    document.getElementById('formTitle').textContent = 'Edit trip';
+    form.style.display = 'block';
+    form.scrollIntoView({behavior:'smooth'});
+  }
+});
+
+/* ---------------------------------------------------------------
+   MAP
+--------------------------------------------------------------- */
+let map = null;
+let markerLayer = null;
+
+function initMapIfNeeded(){
+  if(map) return;
+  map = L.map('map').setView([20, 0], 2);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 18
+  }).addTo(map);
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+function renderMap(){
+  if(!map) return;
+  markerLayer.clearLayers();
+  if(!trips.length) return;
+
+  // group trips at (roughly) the same coordinates so repeat visits share one marker
+  const groups = {};
+  trips.forEach(t=>{
+    const k = placeKey(t);
+    (groups[k] = groups[k] || []).push(t);
+  });
+
+  const bounds = [];
+  Object.values(groups).forEach(groupTrips=>{
+    const anyUpcoming = groupTrips.some(isUpcoming);
+    const anyPast = groupTrips.some(t=>!isUpcoming(t));
+    const t0 = groupTrips[0];
+    bounds.push([t0.lat, t0.lng]);
+
+    const style = anyPast
+      ? { radius:9, color:'#2a4f52', weight:2, fillColor:'#3c6e71', fillOpacity:0.85 }
+      : { radius:9, color:'#9c7f1c', weight:2, dashArray:'4,3', fillColor:'#c9a227', fillOpacity:0.45 };
+
+    const marker = L.circleMarker([t0.lat, t0.lng], style);
+    const popupHtml = groupTrips
+      .sort((a,b)=>b.startDate.localeCompare(a.startDate))
+      .map(t=>`<strong>${escapeHtml(t.place)}</strong><br>${t.startDate} → ${t.endDate}${t.companions ? '<br>with '+escapeHtml(t.companions) : ''}`)
+      .join('<hr style="margin:6px 0;border:none;border-top:1px solid #ddd0ac;">');
+    marker.bindPopup(popupHtml);
+    marker.addTo(markerLayer);
+    if(anyUpcoming && anyPast){
+      // mixed group: small indicator ring
+      marker.setStyle({ weight:3 });
+    }
+  });
+
+  if(bounds.length){
+    map.fitBounds(bounds, { maxZoom:6, padding:[30,30] });
+  }
+}
+
+/* ---------------------------------------------------------------
+   STATS
+--------------------------------------------------------------- */
+function renderStats(){
+  const grid = document.getElementById('statGrid');
+  grid.innerHTML = '';
+
+  const uniquePlaces = new Set(trips.map(placeKey)).size;
+  const countries = new Set(trips.map(t=>t.country).filter(Boolean));
+  const continents = new Set(trips.map(t=>t.continent).filter(Boolean));
+  const totalDays = trips.filter(t=>!isUpcoming(t)).reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate),0);
+
+  const stats = [
+    { num: trips.length, label:'Trips logged' },
+    { num: uniquePlaces, label:'Places' },
+    { num: countries.size, label:'Countries' },
+    { num: continents.size + ' / 7', label:'Continents' },
+    { num: totalDays, label:'Days travelled' },
+  ];
+  stats.forEach(s=>{
+    const d = document.createElement('div');
+    d.className = 'stat-stamp';
+    d.innerHTML = `<div class="stat-num">${s.num}</div><div class="stat-label">${s.label}</div>`;
+    grid.appendChild(d);
+  });
+
+  // visits per place
+  const counts = {};
+  const names = {};
+  trips.forEach(t=>{
+    const k = placeKey(t);
+    counts[k] = (counts[k]||0)+1;
+    names[k] = t.place;
+  });
+  const sortedPlaces = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const maxCount = sortedPlaces.length ? sortedPlaces[0][1] : 1;
+  const visitsEl = document.getElementById('visitsBreakdown');
+  visitsEl.innerHTML = sortedPlaces.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
+  sortedPlaces.forEach(([k,c])=>{
+    visitsEl.appendChild(barRow(names[k], c, maxCount));
+  });
+
+  // trips per year
+  const years = {};
+  trips.forEach(t=>{
+    const y = t.startDate.slice(0,4);
+    years[y] = (years[y]||0)+1;
+  });
+  const sortedYears = Object.entries(years).sort((a,b)=>a[0].localeCompare(b[0]));
+  const maxYear = sortedYears.length ? Math.max(...sortedYears.map(y=>y[1])) : 1;
+  const yearEl = document.getElementById('yearBreakdown');
+  yearEl.innerHTML = sortedYears.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
+  sortedYears.forEach(([y,c])=>{
+    yearEl.appendChild(barRow(y, c, maxYear));
+  });
+
+  // by continent
+  const contCounts = {};
+  trips.forEach(t=>{
+    const c = t.continent || 'Unspecified';
+    contCounts[c] = (contCounts[c]||0)+1;
+  });
+  const sortedCont = Object.entries(contCounts).sort((a,b)=>b[1]-a[1]);
+  const maxCont = sortedCont.length ? sortedCont[0][1] : 1;
+  const contEl = document.getElementById('continentBreakdown');
+  contEl.innerHTML = sortedCont.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
+  sortedCont.forEach(([c,n])=>{
+    contEl.appendChild(barRow(c, n, maxCont));
+  });
+}
+
+function barRow(label, count, max){
+  const row = document.createElement('div');
+  row.className = 'bar-row';
+  const pct = Math.max(6, Math.round((count/max)*100));
+  row.innerHTML = `
+    <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    <div class="bar-count mono">${count}</div>
+  `;
+  return row;
+}
+
+/* ---------------------------------------------------------------
+   INIT
+--------------------------------------------------------------- */
+renderTrips();
+</script>
+</body>
+</html>
