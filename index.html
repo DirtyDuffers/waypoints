@@ -77,6 +77,10 @@
   input:focus, textarea:focus, select:focus{outline:2px solid var(--teal); outline-offset:1px;}
   textarea{resize:vertical; min-height:60px;}
 
+  .date-select{display:flex; gap:6px;}
+  .date-select select{flex:1; min-width:0;}
+  .date-select select:disabled{opacity:.5; background:var(--paper-alt);}
+
   .search-row{display:flex; gap:8px;}
   .search-row input{flex:1;}
   .btn{
@@ -239,11 +243,19 @@
       <div class="form-row">
         <div class="form-field">
           <label>Start date</label>
-          <input type="date" id="fStart">
+          <div class="date-select" id="dsStart">
+            <select class="dsYear"><option value="">Year</option></select>
+            <select class="dsMonth" disabled><option value="">Month</option></select>
+            <select class="dsDay" disabled><option value="">Day</option></select>
+          </div>
         </div>
         <div class="form-field">
           <label>End date</label>
-          <input type="date" id="fEnd">
+          <div class="date-select" id="dsEnd">
+            <select class="dsYear"><option value="">Year</option></select>
+            <select class="dsMonth" disabled><option value="">Month</option></select>
+            <select class="dsDay" disabled><option value="">Day</option></select>
+          </div>
         </div>
         <div class="form-field">
           <label>Went with</label>
@@ -379,6 +391,96 @@ function guessContinent(country){
 }
 
 /* ---------------------------------------------------------------
+   DATE PICKERS (year first, then month, then day)
+--------------------------------------------------------------- */
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function daysInMonth(year, monthHuman){
+  return new Date(year, monthHuman, 0).getDate();
+}
+
+function makeDateSelect(containerId, onComplete){
+  const el = document.getElementById(containerId);
+  const yearSel = el.querySelector('.dsYear');
+  const monthSel = el.querySelector('.dsMonth');
+  const daySel = el.querySelector('.dsDay');
+
+  const nowYear = new Date().getFullYear();
+  for(let y = nowYear + 5; y >= nowYear - 30; y--){
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y;
+    yearSel.appendChild(opt);
+  }
+  MONTH_NAMES.forEach((name, i)=>{
+    const opt = document.createElement('option');
+    opt.value = String(i+1).padStart(2,'0');
+    opt.textContent = name;
+    monthSel.appendChild(opt);
+  });
+
+  function rebuildDays(){
+    const y = yearSel.value, m = monthSel.value;
+    const prevDay = daySel.value;
+    daySel.innerHTML = '<option value="">Day</option>';
+    if(!y || !m){ daySel.disabled = true; return; }
+    const total = daysInMonth(parseInt(y,10), parseInt(m,10));
+    for(let d=1; d<=total; d++){
+      const opt = document.createElement('option');
+      opt.value = String(d).padStart(2,'0');
+      opt.textContent = d;
+      daySel.appendChild(opt);
+    }
+    daySel.disabled = false;
+    if(prevDay && parseInt(prevDay,10) <= total) daySel.value = prevDay;
+  }
+
+  yearSel.addEventListener('change', ()=>{
+    monthSel.disabled = !yearSel.value;
+    rebuildDays();
+    fireIfComplete();
+  });
+  monthSel.addEventListener('change', ()=>{ rebuildDays(); fireIfComplete(); });
+  daySel.addEventListener('change', fireIfComplete);
+
+  function fireIfComplete(){
+    if(onComplete) onComplete(getValue());
+  }
+
+  function getValue(){
+    if(!yearSel.value || !monthSel.value || !daySel.value) return '';
+    return `${yearSel.value}-${monthSel.value}-${daySel.value}`;
+  }
+  function setValue(iso){
+    if(!iso){ reset(); return; }
+    const [y,m,d] = iso.split('-');
+    yearSel.value = y;
+    monthSel.disabled = false;
+    monthSel.value = m;
+    rebuildDays();
+    daySel.value = d;
+  }
+  function reset(){
+    yearSel.value = '';
+    monthSel.value = ''; monthSel.disabled = true;
+    daySel.innerHTML = '<option value="">Day</option>'; daySel.disabled = true;
+  }
+  function markUserEdited(){ el.dataset.userEdited = '1'; }
+  [yearSel, monthSel, daySel].forEach(s => s.addEventListener('change', markUserEdited));
+
+  return { getValue, setValue, reset, el };
+}
+
+let endUserEdited = false;
+const startDS = makeDateSelect('dsStart', (val)=>{
+  // Auto-copy start date into end date until the user has touched end themselves.
+  if(val && !endDS.el.dataset.userEdited){
+    endDS.setValue(val);
+    delete endDS.el.dataset.userEdited; // setValue via code shouldn't count as user edit
+  }
+});
+const endDS = makeDateSelect('dsEnd');
+
+/* ---------------------------------------------------------------
    VIEW SWITCHING
 --------------------------------------------------------------- */
 document.querySelectorAll('nav.tabs button').forEach(btn=>{
@@ -409,18 +511,33 @@ document.getElementById('cancelForm').addEventListener('click', ()=>{
 });
 
 function clearForm(){
-  ['placeSearch','fPlace','fLat','fLng','fCountry','fStart','fEnd','fCompanions','fNotes'].forEach(id=>{
+  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanions','fNotes'].forEach(id=>{
     document.getElementById(id).value = '';
   });
   document.getElementById('fContinent').value = '';
   document.getElementById('geoResults').style.display = 'none';
   document.getElementById('geoStatus').textContent = '';
+  document.getElementById('fPlace').dataset.userEdited = '';
+  startDS.reset();
+  endDS.reset();
+  delete endDS.el.dataset.userEdited;
 }
 
 /* Nominatim geocoding — free, no API key, low request volume (personal use) */
 document.getElementById('searchBtn').addEventListener('click', doGeocode);
 document.getElementById('placeSearch').addEventListener('keydown', e=>{
   if(e.key === 'Enter'){ e.preventDefault(); doGeocode(); }
+});
+// Keep the display-name field in sync with the search box so it's never
+// silently blank if the user searches but doesn't click a result.
+document.getElementById('placeSearch').addEventListener('input', e=>{
+  const fPlace = document.getElementById('fPlace');
+  if(!fPlace.dataset.userEdited){
+    fPlace.value = e.target.value;
+  }
+});
+document.getElementById('fPlace').addEventListener('input', e=>{
+  e.target.dataset.userEdited = '1';
 });
 
 async function doGeocode(){
@@ -464,11 +581,16 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
   const place = document.getElementById('fPlace').value.trim();
   const lat = parseFloat(document.getElementById('fLat').value);
   const lng = parseFloat(document.getElementById('fLng').value);
-  const start = document.getElementById('fStart').value;
-  const end = document.getElementById('fEnd').value || start;
+  const start = startDS.getValue();
+  const end = endDS.getValue() || start;
 
-  if(!place || isNaN(lat) || isNaN(lng) || !start){
-    alert('Please fill in at least a place, coordinates, and a start date.');
+  const missing = [];
+  if(!place) missing.push('display name');
+  if(isNaN(lat)) missing.push('latitude');
+  if(isNaN(lng)) missing.push('longitude');
+  if(!start) missing.push('start date');
+  if(missing.length){
+    alert('Missing: ' + missing.join(', ') + '.\n\nTip: if you searched for a place, make sure you clicked one of the results in the dropdown — searching alone doesn\'t fill in the fields.');
     return;
   }
   if(end < start){
@@ -583,12 +705,14 @@ document.addEventListener('click', e=>{
     if(!t) return;
     editingId = id;
     document.getElementById('fPlace').value = t.place;
+    document.getElementById('fPlace').dataset.userEdited = '1';
     document.getElementById('fLat').value = t.lat;
     document.getElementById('fLng').value = t.lng;
     document.getElementById('fCountry').value = t.country;
     document.getElementById('fContinent').value = t.continent;
-    document.getElementById('fStart').value = t.startDate;
-    document.getElementById('fEnd').value = t.endDate;
+    startDS.setValue(t.startDate);
+    endDS.setValue(t.endDate);
+    endDS.el.dataset.userEdited = '1'; // preserve existing end date; don't auto-overwrite on edit
     document.getElementById('fCompanions').value = t.companions;
     document.getElementById('fNotes').value = t.notes;
     document.getElementById('formTitle').textContent = 'Edit trip';
