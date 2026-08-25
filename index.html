@@ -352,6 +352,23 @@
 
       <div class="form-row">
         <div class="form-field full">
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="fUseCustomBase">
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">📍 Use a different base for this trip</span>
+          </div>
+          <div class="companion-empty-note" style="margin-top:2px;">e.g. you're staying in Belgium but nip to Paris for the day — set Belgium as the base so the trip isn't measured all the way from home.</div>
+          <div class="sub-panel" id="customBasePanel" style="display:none;">
+            <h4>Base for this trip</h4>
+            <div id="lpCustomBase"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
           <div class="toggle-group">
             <div class="toggle-row">
               <label class="toggle-switch">
@@ -549,6 +566,23 @@
       <div class="settings-chip-row" id="companionChips"></div>
     </div>
 
+    <div class="panel">
+      <h3 style="font-size:.95rem;">💾 Backup &amp; transfer</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Everything is stored only in this browser. Export a backup file to move your log to another device, or as a safety copy.</p>
+      <button class="btn btn-teal" id="exportBtn" type="button">⬇️ Export backup</button>
+
+      <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--line);">
+        <label style="display:block; margin-bottom:6px;">Import a backup file</label>
+        <input type="file" id="importFile" accept="application/json" style="font-size:.85rem;">
+        <div id="importSummary" style="display:none; margin-top:10px; font-size:.85rem; background:var(--paper-alt); border:1px solid var(--line); border-radius:8px; padding:10px 12px;"></div>
+        <div id="importActions" style="display:none; gap:8px; flex-wrap:wrap; margin-top:10px;">
+          <button class="btn btn-teal" id="importMergeBtn" type="button">🔀 Merge with current data</button>
+          <button class="btn btn-rust" id="importReplaceBtn" type="button">⚠️ Replace everything</button>
+        </div>
+        <div class="geo-status" id="importStatus"></div>
+      </div>
+    </div>
+
     <div class="form-actions">
       <span class="save-confirm" id="settingsSaveConfirm">Saved ✓</span>
       <button class="btn btn-teal" id="saveSettingsBtn">Save settings</button>
@@ -589,6 +623,7 @@ function migrateTrip(t){
   if(typeof t.isCruise !== 'boolean') t.isCruise = false;
   if(typeof t.isDrive !== 'boolean') t.isDrive = false;
   if(!t.cruise) t.cruise = null;
+  if(!t.customBase) t.customBase = null;
   if(typeof t.countryCode !== 'string') t.countryCode = '';
   return t;
 }
@@ -941,6 +976,9 @@ function clearForm(){
   document.getElementById('cruisePanel').style.display = 'none';
   clearCruisePorts();
   updateCruiseFlightVisibility();
+  document.getElementById('fUseCustomBase').checked = false;
+  document.getElementById('customBasePanel').style.display = 'none';
+  customBasePicker.clear();
 }
 
 /* ---------------------------------------------------------------
@@ -978,6 +1016,11 @@ document.getElementById('goToSettingsFromForm').addEventListener('click', ()=> s
    FLIGHT / CRUISE TOGGLES + CRUISE PORT PICKERS
 --------------------------------------------------------------- */
 const startPortPicker = createLocationPicker(document.getElementById('lpStartPort'), 'Search for the embarkation port');
+const customBasePicker = createLocationPicker(document.getElementById('lpCustomBase'), "Search for where you were actually travelling from");
+document.getElementById('fUseCustomBase').addEventListener('change', (e)=>{
+  document.getElementById('customBasePanel').style.display = e.target.checked ? 'block' : 'none';
+  if(!e.target.checked) customBasePicker.clear();
+});
 const endPortPicker = createLocationPicker(document.getElementById('lpEndPort'), 'Search for the disembarkation port');
 const departureAirportPicker = createLocationPicker(document.getElementById('lpDepartureAirport'), 'Search for the outbound airport');
 const arrivalAirportPicker = createLocationPicker(document.getElementById('lpArrivalAirport'), 'Search for the return airport');
@@ -1098,6 +1141,7 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
   if(isCruise && !endPortPicker.getValue()) missing.push('cruise end port');
   if(isCruise && isFlight && !departureAirportPicker.getValue()) missing.push('outbound airport');
   if(isCruise && isFlight && !arrivalAirportPicker.getValue()) missing.push('return airport');
+  if(document.getElementById('fUseCustomBase').checked && !customBasePicker.getValue()) missing.push('custom base location');
   if(missing.length){
     alert('Missing: ' + missing.join(', ') + '.\n\nTip: if you searched for a place, make sure you clicked one of the results in the dropdown — searching alone doesn\'t fill in the fields.');
     return;
@@ -1122,6 +1166,7 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     isFlight,
     isCruise,
     isDrive,
+    customBase: document.getElementById('fUseCustomBase').checked ? customBasePicker.getValue() : null,
     cruise: isCruise ? {
       startPort: startPortPicker.getValue(),
       endPort: endPortPicker.getValue(),
@@ -1198,8 +1243,111 @@ document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
 });
 
 /* ---------------------------------------------------------------
-   TRIP LIST RENDERING
+   BACKUP / EXPORT / IMPORT
 --------------------------------------------------------------- */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const payload = {
+    app: 'waypoints',
+    exportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    settings,
+    trips
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `waypoints-backup-${todayStr()}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+let pendingImport = null;
+
+document.getElementById('importFile').addEventListener('change', async (e)=>{
+  const file = e.target.files[0];
+  const summaryEl = document.getElementById('importSummary');
+  const actionsEl = document.getElementById('importActions');
+  const statusEl = document.getElementById('importStatus');
+  statusEl.textContent = '';
+  summaryEl.style.display = 'none';
+  actionsEl.style.display = 'none';
+  pendingImport = null;
+  if(!file) return;
+
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    if(!Array.isArray(data.trips)){
+      statusEl.textContent = "That doesn't look like a Waypoints backup file (no trips array found).";
+      return;
+    }
+    const importedTrips = data.trips.map(migrateTrip);
+    const importedSettings = data.settings && typeof data.settings === 'object'
+      ? { home: data.settings.home || null, companions: Array.isArray(data.settings.companions) ? data.settings.companions : [] }
+      : { home: null, companions: [] };
+
+    pendingImport = { trips: importedTrips, settings: importedSettings };
+
+    summaryEl.style.display = 'block';
+    summaryEl.innerHTML = `
+      This file contains <strong>${importedTrips.length}</strong> trip${importedTrips.length!==1?'s':''},
+      home location ${importedSettings.home ? 'set (' + escapeHtml(importedSettings.home.name) + ')' : 'not set'},
+      and <strong>${importedSettings.companions.length}</strong> companion${importedSettings.companions.length!==1?'s':''}.
+      ${data.exportedAt ? '<br>Exported ' + new Date(data.exportedAt).toLocaleString() + '.' : ''}
+    `;
+    actionsEl.style.display = 'flex';
+  }catch(err){
+    statusEl.textContent = "Couldn't read that file — make sure it's a Waypoints export.";
+  }
+});
+
+document.getElementById('importMergeBtn').addEventListener('click', ()=>{
+  if(!pendingImport) return;
+  const existingIds = new Set(trips.map(t=>t.id));
+  const newTrips = pendingImport.trips.filter(t=>!existingIds.has(t.id));
+  trips = trips.concat(newTrips);
+  saveTrips(trips);
+
+  if(!settings.home && pendingImport.settings.home){
+    settings.home = pendingImport.settings.home;
+  }
+  const existingNames = new Set(settings.companions.map(c=>c.toLowerCase()));
+  pendingImport.settings.companions.forEach(name=>{
+    if(!existingNames.has(name.toLowerCase())){
+      settings.companions.push(name);
+      existingNames.add(name.toLowerCase());
+    }
+  });
+  saveSettings(settings);
+
+  document.getElementById('importStatus').textContent = `Merged: added ${newTrips.length} new trip${newTrips.length!==1?'s':''} (${pendingImport.trips.length - newTrips.length} already present were skipped).`;
+  finishImport();
+});
+
+document.getElementById('importReplaceBtn').addEventListener('click', ()=>{
+  if(!pendingImport) return;
+  if(!confirm(`This will permanently delete your current ${trips.length} trip(s) and settings, replacing them with the ${pendingImport.trips.length} trip(s) from this file. This can't be undone. Continue?`)){
+    return;
+  }
+  trips = pendingImport.trips;
+  settings = pendingImport.settings;
+  saveTrips(trips);
+  saveSettings(settings);
+  document.getElementById('importStatus').textContent = `Replaced all data with ${trips.length} trip(s) from the backup.`;
+  finishImport();
+  renderSettingsView(); // home picker / companion chips need to reflect the new settings object
+});
+
+function finishImport(){
+  pendingImport = null;
+  document.getElementById('importFile').value = '';
+  document.getElementById('importSummary').style.display = 'none';
+  document.getElementById('importActions').style.display = 'none';
+  renderTrips();
+}
 function visitCounts(){
   const counts = {};
   trips.forEach(t=>{
@@ -1216,7 +1364,7 @@ function companionNames(trip){
 }
 
 function tripDistances(trip){
-  const home = settings.home;
+  const home = trip.customBase || settings.home;
   let fromHomeKm = null, airKm = 0, cruiseKm = 0, driveKm = 0;
   if(home){
     fromHomeKm = haversineKm(home.lat, home.lng, trip.lat, trip.lng);
@@ -1263,7 +1411,10 @@ function tripCard(trip, counts){
   metaParts.push(`<span>${days} day${days!==1?'s':''}</span>`);
   if(trip.country) metaParts.push(`<span>${escapeHtml(trip.country)}</span>`);
   if(names.length) metaParts.push(`<span>with ${escapeHtml(names.join(', '))}</span>`);
-  if(dist.fromHomeKm !== null) metaParts.push(`<span class="mono">${Math.round(dist.fromHomeKm).toLocaleString()} km from home</span>`);
+  if(dist.fromHomeKm !== null){
+    const baseLabel = trip.customBase ? `from ${escapeHtml(trip.customBase.name)}` : 'from home';
+    metaParts.push(`<span class="mono">${Math.round(dist.fromHomeKm).toLocaleString()} km ${baseLabel}</span>`);
+  }
   if(trip.isFlight && dist.airKm > 0) metaParts.push(`<span class="mono">✈️ ${Math.round(kmToMiles(dist.airKm)).toLocaleString()} mi</span>`);
   if(trip.isCruise && dist.cruiseKm > 0) metaParts.push(`<span class="mono">🚢 ${Math.round(kmToNm(dist.cruiseKm)).toLocaleString()} nm</span>`);
   if(trip.isDrive && dist.driveKm > 0) metaParts.push(`<span class="mono">🚗 ${Math.round(kmToMiles(dist.driveKm)).toLocaleString()} mi</span>`);
@@ -1357,6 +1508,10 @@ document.addEventListener('click', e=>{
       arrivalAirportPicker.setValue(t.cruise.arrivalAirport || null);
     }
     updateCruiseFlightVisibility();
+
+    document.getElementById('fUseCustomBase').checked = !!t.customBase;
+    document.getElementById('customBasePanel').style.display = t.customBase ? 'block' : 'none';
+    customBasePicker.setValue(t.customBase || null);
 
     document.getElementById('formTitle').textContent = 'Edit trip';
     form.style.display = 'block';
