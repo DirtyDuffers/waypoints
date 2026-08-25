@@ -2681,24 +2681,36 @@ function renderDistanceOverTimeChart(){
   });
   const unitWord = settings.unit === 'metric' ? 'km' : 'mi';
 
-  const W = 320, H = 160, padL = 38, padB = 24, padT = 12, padR = 12;
-  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const padL = 44, padB = 24, padT = 12, padR = 16;
+  const pointSpacing = 34; // px between years — wide enough that labels never collide
+  const H = 160;
+  const chartW = Math.max(240, (years.length - 1) * pointSpacing);
+  const W = padL + chartW + padR;
   const maxVal = Math.max(...points, 1);
 
   const xAt = i => padL + (years.length===1 ? chartW/2 : (i/(years.length-1))*chartW);
-  const yAt = v => padT + chartH - (v/maxVal)*chartH;
+  const chartH = H - padT - padB;
+  const yAtVal = v => padT + chartH - (v/maxVal)*chartH;
 
-  const linePath = points.map((v,i)=>`${i===0?'M':'L'}${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(' ');
+  const linePath = points.map((v,i)=>`${i===0?'M':'L'}${xAt(i).toFixed(1)},${yAtVal(v).toFixed(1)}`).join(' ');
   const areaPath = linePath + ` L${xAt(points.length-1).toFixed(1)},${(padT+chartH).toFixed(1)} L${xAt(0).toFixed(1)},${(padT+chartH).toFixed(1)} Z`;
 
-  const circles = points.map((v,i)=>`<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(v).toFixed(1)}" r="3.5" fill="#3c6e71"><title>${years[i]}: ${Math.round(v).toLocaleString()} ${unitWord}</title></circle>`).join('');
-  const xLabels = years.map((y,i)=>`<text x="${xAt(i).toFixed(1)}" y="${H-6}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`).join('');
+  const circles = points.map((v,i)=>`<circle cx="${xAt(i).toFixed(1)}" cy="${yAtVal(v).toFixed(1)}" r="3.5" fill="#3c6e71"><title>${years[i]}: ${Math.round(v).toLocaleString()} ${unitWord}</title></circle>`).join('');
+
+  // Show at most ~8 year labels regardless of how many years of data there
+  // are, so labels never overlap — but always include the most recent year.
+  const labelStep = Math.max(1, Math.ceil(years.length / 8));
+  const xLabels = years.map((y,i)=>{
+    if(i % labelStep !== 0 && i !== years.length-1) return '';
+    return `<text x="${xAt(i).toFixed(1)}" y="${H-6}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`;
+  }).join('');
+
   const yMaxLabel = `<text x="${padL-6}" y="${padT+4}" text-anchor="end" class="chart-tooltip-label">${Math.round(maxVal).toLocaleString()}</text>`;
   const yZeroLabel = `<text x="${padL-6}" y="${padT+chartH}" text-anchor="end" class="chart-tooltip-label">0</text>`;
   const gridLine = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/><line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/>`;
 
   document.getElementById(containerId).innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:none;">
       <defs>
         <linearGradient id="distGrad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stop-color="#3c6e71" stop-opacity="0.35"/>
@@ -2850,7 +2862,7 @@ function renderContinentStack(){
   ).join('');
 
   document.getElementById(containerId).innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${bars}</svg>
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:none;">${bars}</svg>
     <div class="chart-legend">${legend}</div>
   `;
 }
