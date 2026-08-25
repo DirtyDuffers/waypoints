@@ -4,6 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Waypoints — Travel Log</title>
+
+<!-- Favicon: inlined so the icon still ships inside this single file -->
+<link rel="icon" type="image/png" href="data:image/png;base64,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">
+
+<!-- iOS home-screen icon and standalone-app behaviour -->
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Waypoints">
+<meta name="theme-color" content="#1c2b3a">
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -38,8 +49,8 @@
     padding:14px 20px; background:var(--ink); color:var(--paper);
     position:sticky; top:0; z-index:500;
   }
-  header.top h1{color:var(--paper); font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:8px;}
-  header.top h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);display:inline-block;}
+  header.top h1{color:var(--paper); font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:9px;}
+  header.top h1 img{width:28px; height:28px; border-radius:8px; display:block;}
   nav.tabs{display:flex; gap:4px;}
   nav.tabs button{
     background:none; border:none; color:var(--paper); opacity:.6;
@@ -158,6 +169,68 @@
 
   footer{text-align:center; font-size:.75rem; color:var(--ink-soft); padding:20px; opacity:.7;}
 
+  /* --- Toggle switches (flight / cruise) --- */
+  .toggle-row{display:flex; align-items:center; gap:10px; padding:6px 0;}
+  .toggle-row .toggle-label{font-size:.92rem; font-weight:500; display:flex; align-items:center; gap:6px;}
+  .toggle-switch{position:relative; width:42px; height:24px; flex-shrink:0;}
+  .toggle-switch input{opacity:0; width:0; height:0; position:absolute;}
+  .toggle-slider{position:absolute; inset:0; background:var(--line); border-radius:999px; cursor:pointer; transition:.2s;}
+  .toggle-slider:before{content:""; position:absolute; height:18px; width:18px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 2px rgba(0,0,0,.3);}
+  .toggle-switch input:checked + .toggle-slider{background:var(--teal);}
+  .toggle-switch input:checked + .toggle-slider:before{transform:translateX(18px);}
+  .toggle-group{display:flex; gap:24px; flex-wrap:wrap; margin:4px 0 8px;}
+
+  /* --- Companion picker --- */
+  .companion-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:4px;}
+  .companion-chip{
+    display:flex; align-items:center; gap:6px; padding:6px 12px; border-radius:20px;
+    background:var(--paper-alt); border:1px solid var(--line); font-size:.85rem; cursor:pointer; user-select:none;
+  }
+  .companion-chip input{margin:0;}
+  .companion-chip.checked{background:var(--teal); color:#fff; border-color:var(--teal-dark);}
+  .companion-empty-note{font-size:.82rem; color:var(--ink-soft);}
+
+  /* --- Cruise sub-panel --- */
+  .sub-panel{
+    background:var(--paper-alt); border:1px dashed var(--line); border-radius:8px;
+    padding:14px; margin:10px 0;
+  }
+  .sub-panel h4{font-size:.85rem; text-transform:uppercase; letter-spacing:.03em; color:var(--ink-soft); margin:0 0 10px;}
+  .port-row{display:flex; gap:8px; align-items:flex-start; margin-bottom:8px;}
+  .port-row .lp-wrap{flex:1;}
+  .port-row .btn-rust{flex-shrink:0; margin-top:2px;}
+  .lp-results{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:160px; overflow-y:auto; background:#fff; display:none;}
+  .lp-results div{padding:7px 10px; cursor:pointer; font-size:.85rem; border-bottom:1px solid var(--line);}
+  .lp-results div:last-child{border-bottom:none;}
+  .lp-results div:hover{background:var(--paper-alt);}
+  .lp-selected{font-size:.8rem; color:var(--ink-soft); margin-top:4px; min-height:1.1em;}
+
+  /* --- About / Settings pages --- */
+  .about-hero{text-align:center; padding:20px 0 6px;}
+  .about-hero img{width:72px; height:72px; border-radius:18px; box-shadow:0 4px 14px rgba(0,0,0,.15);}
+  .about-hero h2{margin-top:10px; font-size:1.4rem;}
+  .about-hero .tagline{color:var(--ink-soft); font-size:.9rem;}
+  .about-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; margin-bottom:14px;}
+  .about-card h3{font-size:.95rem; margin-bottom:6px;}
+  .about-card p{font-size:.88rem; line-height:1.5; color:var(--ink); margin:0 0 6px;}
+  .about-version{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.8rem; color:var(--ink-soft); margin:18px 0 4px;}
+  .coffee-btn{
+    display:inline-flex; align-items:center; gap:8px; background:var(--gold); color:var(--ink);
+    padding:10px 18px; border-radius:24px; text-decoration:none; font-weight:600; font-size:.9rem;
+  }
+  .coffee-btn:hover{background:var(--gold-dark); color:#fff;}
+  .link-btn{background:none; border:none; color:var(--teal-dark); font-weight:600; cursor:pointer; padding:0; font-size:.9rem; text-decoration:underline;}
+  .back-link{display:inline-flex; align-items:center; gap:4px; margin-bottom:14px; cursor:pointer; color:var(--ink-soft); font-size:.85rem; background:none; border:none; padding:0;}
+
+  .settings-chip-row{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px;}
+  .settings-chip{
+    display:flex; align-items:center; gap:8px; padding:6px 8px 6px 14px; border-radius:20px;
+    background:var(--paper-alt); border:1px solid var(--line); font-size:.85rem;
+  }
+  .settings-chip button{background:none; border:none; color:var(--rust); cursor:pointer; font-size:1rem; line-height:1; padding:2px;}
+  .save-confirm{color:var(--teal-dark); font-size:.85rem; font-weight:600; margin-left:10px; opacity:0; transition:opacity .3s;}
+  .save-confirm.show{opacity:1;}
+
   @media (max-width:560px){
     header.top{padding:12px 14px;}
     header.top h1{font-size:1.05rem;}
@@ -174,11 +247,12 @@
 <body>
 
 <header class="top">
-  <h1><span class="dot"></span>Waypoints</h1>
+  <h1><img src="data:image/png;base64,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" alt=""><span>Waypoints</span></h1>
   <nav class="tabs">
     <button data-view="trips" class="active">Trips</button>
     <button data-view="map">Map</button>
     <button data-view="stats">Stats</button>
+    <button data-view="about">About</button>
   </nav>
 </header>
 
@@ -225,6 +299,7 @@
           <label>Country</label>
           <input type="text" id="fCountry">
         </div>
+        <input type="hidden" id="fCountryCode">
         <div class="form-field">
           <label>Continent</label>
           <select id="fContinent">
@@ -257,10 +332,76 @@
             <select class="dsDay" disabled><option value="">Day</option></select>
           </div>
         </div>
-        <div class="form-field">
-          <label>Went with</label>
-          <input type="text" id="fCompanions" placeholder="e.g. Sarah, Mum">
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Went with 👥</label>
+          <div class="companion-list" id="companionCheckList"></div>
+          <div class="companion-empty-note" id="companionEmptyNote" style="display:none;">
+            No companions saved yet — add some in <button type="button" class="link-btn" id="goToSettingsFromForm">Settings</button>, or just type a name below.
+          </div>
         </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Other companions (not in your list)</label>
+          <input type="text" id="fCompanionsOther" placeholder="e.g. a friend you met on the trip">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <div class="toggle-group">
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="fIsFlight">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">✈️ Travelled by plane</span>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="fIsCruise">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">🚢 This was a cruise</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-panel" id="cruisePanel" style="display:none;">
+        <h4>Cruise details</h4>
+        <div class="port-row">
+          <div class="lp-wrap">
+            <label>Start port</label>
+            <div id="lpStartPort"></div>
+          </div>
+        </div>
+        <div id="portsBetween"></div>
+        <button type="button" class="btn btn-ghost" id="addPortBtn" style="margin-bottom:10px;">+ Add a port in between</button>
+        <div class="port-row">
+          <div class="lp-wrap">
+            <label>End port</label>
+            <div id="lpEndPort"></div>
+          </div>
+        </div>
+        <div id="cruiseAirports" style="display:none;">
+          <div class="port-row">
+            <div class="lp-wrap">
+              <label>✈️ Outbound flight — airport</label>
+              <div id="lpDepartureAirport"></div>
+            </div>
+          </div>
+          <div class="port-row">
+            <div class="lp-wrap">
+              <label>✈️ Return flight — airport</label>
+              <div id="lpArrivalAirport"></div>
+            </div>
+          </div>
+        </div>
+        <div class="geo-status" id="cruiseFlightNote">No-fly cruise — no flight legs will be tracked for this trip.</div>
       </div>
 
       <div class="form-row">
@@ -289,6 +430,9 @@
     <div class="legend">
       <span><span class="swatch past"></span>Been there</span>
       <span><span class="swatch upcoming"></span>Upcoming</span>
+      <span>🏠 Home</span>
+      <span>✈️ ┈┈ Flight path</span>
+      <span>🚢 Cruise route</span>
     </div>
   </section>
 
@@ -296,16 +440,111 @@
   <section id="view-stats" class="view">
     <div class="stat-grid" id="statGrid"></div>
     <div class="breakdown">
-      <h3>Visits per place</h3>
+      <h3>🏆 Visits per place</h3>
       <div id="visitsBreakdown"></div>
     </div>
     <div class="breakdown">
-      <h3>Trips per year</h3>
+      <h3>👥 Travelled with most</h3>
+      <div id="companionsBreakdown"></div>
+    </div>
+    <div class="breakdown">
+      <h3>📅 Trips per year</h3>
       <div id="yearBreakdown"></div>
     </div>
     <div class="breakdown">
-      <h3>By continent</h3>
+      <h3>🌍 By continent</h3>
       <div id="continentBreakdown"></div>
+    </div>
+  </section>
+
+  <!-- ABOUT VIEW -->
+  <section id="view-about" class="view">
+    <div class="about-hero">
+      <img src="data:image/png;base64,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" alt="">
+      <h2>Waypoints</h2>
+      <div class="tagline">A personal log of everywhere you've been — and everywhere you're going.</div>
+    </div>
+
+    <div class="about-card" style="text-align:center;">
+      <h3>☕ Enjoying Waypoints?</h3>
+      <p>These apps are free and ad-free. If it's saved you time (or jogged a good memory), a coffee would be very much appreciated!</p>
+      <a class="coffee-btn" href="https://buymeacoffee.com/duffers" target="_blank" rel="noopener">☕ Buy Duffers a Coffee</a>
+    </div>
+
+    <div class="about-card">
+      <h3>
+        <img src="lfc-badge.png" alt="" style="width:20px; height:20px; vertical-align:-4px; margin-right:5px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';">
+        <span style="display:none;">⚽</span> Also track LFC fixtures?
+      </h3>
+      <p>The LFC Fixtures app covers every Liverpool result, H2H record, and an away-day trip planner — built the same way, no accounts, no tracking.</p>
+      <a href="https://dirtyduffers.github.io/" target="_blank" rel="noopener" style="display:inline-block; background:var(--teal); color:#fff; font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:10px; text-decoration:none;">Open LFC Fixtures ↗</a>
+    </div>
+
+    <div class="about-card">
+      <h3>🥷 Also have a Ninja appliance?</h3>
+      <p>The Ninja Hub covers all three cook guides in one place — Blender, Air Fryer, and Woodfire Grill — with the same tailored, ad-free approach.</p>
+      <a href="https://dirtyduffers.github.io/Ninja-Hub/" target="_blank" rel="noopener" style="display:inline-block; background:var(--gold); color:var(--ink); font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:10px; text-decoration:none;">Open Ninja Hub ↗</a>
+    </div>
+
+    <div class="about-card">
+      <h3>📱 Add to Home Screen</h3>
+      <div style="margin-bottom:8px;">
+        <div style="font-size:.85rem; font-weight:700; margin-bottom:3px;">🍎 iPhone / iPad (Safari)</div>
+        <div style="background:var(--paper-alt); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:.83rem;">Tap Share → Add to Home Screen → Add</div>
+      </div>
+      <div style="margin-bottom:8px;">
+        <div style="font-size:.85rem; font-weight:700; margin-bottom:3px;">🤖 Android (Chrome)</div>
+        <div style="background:var(--paper-alt); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:.83rem;">Tap ⋮ → Add to Home screen or Install app</div>
+      </div>
+      <div>
+        <div style="font-size:.85rem; font-weight:700; margin-bottom:3px;">🪟 Windows / Mac</div>
+        <div style="background:var(--paper-alt); border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:.83rem;">Chrome/Edge: click the install icon in the address bar. Safari (Mac): File → Add to Dock</div>
+      </div>
+    </div>
+
+    <div class="about-card">
+      <h3>🔒 Your data</h3>
+      <p>Waypoints is a single-file travel log — no accounts, no cloud, no tracking. Everything you enter is stored only in this browser, on this device.</p>
+    </div>
+
+    <div class="about-card">
+      <h3>👤 About</h3>
+      <p id="authorBlurb">Created by <strong>Duffers</strong> — a free, ad-free travel log built to make it easy to look back on where you've been and plan where you're going next.</p>
+    </div>
+
+    <div class="about-card" style="text-align:center;">
+      <h3>⚙️ Your details</h3>
+      <p>Set your home location and manage your usual travel companions.</p>
+      <button class="btn btn-teal" data-view="settings">⚙️ Open settings</button>
+    </div>
+
+    <div class="about-version">Waypoints v1.1.0 · by Duffers</div>
+  </section>
+
+  <!-- SETTINGS VIEW -->
+  <section id="view-settings" class="view">
+    <button class="back-link" data-view="about">← Back to About</button>
+    <h2 style="font-size:1.2rem;">Settings</h2>
+
+    <div class="panel">
+      <h3 style="font-size:.95rem;">🏠 Home / base location</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Used to work out how far each trip is from home, and to plot flight paths on the map.</p>
+      <div id="lpHome"></div>
+    </div>
+
+    <div class="panel">
+      <h3 style="font-size:.95rem;">👥 Travel companions</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Add the people you usually travel with, so you can pick them from a list when logging a trip.</p>
+      <div class="search-row">
+        <input type="text" id="newCompanionInput" placeholder="e.g. Sarah">
+        <button class="btn btn-teal" id="addCompanionBtn" type="button">Add</button>
+      </div>
+      <div class="settings-chip-row" id="companionChips"></div>
+    </div>
+
+    <div class="form-actions">
+      <span class="save-confirm" id="settingsSaveConfirm">Saved ✓</span>
+      <button class="btn btn-teal" id="saveSettingsBtn">Save settings</button>
     </div>
   </section>
 
@@ -328,7 +567,96 @@ function loadTrips(){
 function saveTrips(trips){
   localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
 }
-let trips = loadTrips();
+
+/* Older saved trips had a single free-text "companions" string, no flight/cruise
+   fields, and no country_code. Migrate them on load so the rest of the app can
+   assume the new shape everywhere. */
+function migrateTrip(t){
+  if(typeof t.companions === 'string'){
+    t.companionsOther = t.companions;
+    t.companions = [];
+  }
+  if(!Array.isArray(t.companions)) t.companions = t.companions ? [t.companions] : [];
+  if(typeof t.companionsOther !== 'string') t.companionsOther = '';
+  if(typeof t.isFlight !== 'boolean') t.isFlight = false;
+  if(typeof t.isCruise !== 'boolean') t.isCruise = false;
+  if(!t.cruise) t.cruise = null;
+  if(typeof t.countryCode !== 'string') t.countryCode = '';
+  return t;
+}
+let trips = loadTrips().map(migrateTrip);
+
+/* ---------------------------------------------------------------
+   SETTINGS (home base + companions)
+--------------------------------------------------------------- */
+const SETTINGS_KEY = 'waypoints.settings.v1';
+function loadSettings(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
+    return { home: s.home || null, companions: Array.isArray(s.companions) ? s.companions : [] };
+  }catch(e){ return { home:null, companions:[] }; }
+}
+function saveSettings(s){
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+let settings = loadSettings();
+
+/* ---------------------------------------------------------------
+   DISTANCE (haversine, great-circle straight-line distance)
+--------------------------------------------------------------- */
+function haversineKm(lat1, lng1, lat2, lng2){
+  const R = 6371;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+function kmToMiles(km){ return km * 0.621371; }
+function kmToNm(km){ return km * 0.539957; }
+
+/* ---------------------------------------------------------------
+   FLAG EMOJI
+--------------------------------------------------------------- */
+/* Nominatim gives a reliable ISO country_code for anything geocoded through the
+   search box; this name-based table is only a fallback for manually-typed
+   countries or older records that predate country_code being stored. */
+const COUNTRY_ISO2 = {
+  "united kingdom":"gb","england":"gb","scotland":"gb","wales":"gb","northern ireland":"gb","ireland":"ie",
+  "france":"fr","germany":"de","spain":"es","italy":"it","portugal":"pt","netherlands":"nl","belgium":"be",
+  "switzerland":"ch","austria":"at","greece":"gr","poland":"pl","czechia":"cz","czech republic":"cz",
+  "hungary":"hu","sweden":"se","norway":"no","denmark":"dk","finland":"fi","iceland":"is","croatia":"hr",
+  "slovenia":"si","slovakia":"sk","romania":"ro","bulgaria":"bg","serbia":"rs","montenegro":"me",
+  "bosnia and herzegovina":"ba","albania":"al","north macedonia":"mk","estonia":"ee","latvia":"lv",
+  "lithuania":"lt","malta":"mt","cyprus":"cy","luxembourg":"lu","monaco":"mc","ukraine":"ua","moldova":"md",
+  "belarus":"by","russia":"ru","san marino":"sm","andorra":"ad","liechtenstein":"li","vatican city":"va",
+  "kosovo":"xk","united states":"us","united states of america":"us","canada":"ca","mexico":"mx","cuba":"cu",
+  "jamaica":"jm","bahamas":"bs","costa rica":"cr","panama":"pa","guatemala":"gt","belize":"bz","honduras":"hn",
+  "nicaragua":"ni","el salvador":"sv","dominican republic":"do","haiti":"ht","trinidad and tobago":"tt",
+  "barbados":"bb","brazil":"br","argentina":"ar","chile":"cl","peru":"pe","colombia":"co","ecuador":"ec",
+  "bolivia":"bo","uruguay":"uy","paraguay":"py","venezuela":"ve","guyana":"gy","suriname":"sr","japan":"jp",
+  "china":"cn","south korea":"kr","north korea":"kp","india":"in","thailand":"th","vietnam":"vn",
+  "indonesia":"id","malaysia":"my","singapore":"sg","philippines":"ph","cambodia":"kh","laos":"la",
+  "myanmar":"mm","nepal":"np","sri lanka":"lk","bangladesh":"bd","pakistan":"pk","united arab emirates":"ae",
+  "qatar":"qa","saudi arabia":"sa","israel":"il","jordan":"jo","lebanon":"lb","turkey":"tr","türkiye":"tr",
+  "georgia":"ge","armenia":"am","azerbaijan":"az","kazakhstan":"kz","uzbekistan":"uz","mongolia":"mn",
+  "taiwan":"tw","hong kong":"hk","macau":"mo","oman":"om","kuwait":"kw","bahrain":"bh","iraq":"iq","iran":"ir",
+  "afghanistan":"af","egypt":"eg","morocco":"ma","tunisia":"tn","algeria":"dz","libya":"ly","south africa":"za",
+  "kenya":"ke","tanzania":"tz","uganda":"ug","ethiopia":"et","ghana":"gh","nigeria":"ng","senegal":"sn",
+  "namibia":"na","botswana":"bw","zimbabwe":"zw","zambia":"zm","mozambique":"mz","rwanda":"rw","mauritius":"mu",
+  "seychelles":"sc","madagascar":"mg","cape verde":"cv","cabo verde":"cv","australia":"au","new zealand":"nz",
+  "fiji":"fj","papua new guinea":"pg","samoa":"ws","tonga":"to","vanuatu":"vu","new caledonia":"nc",
+  "french polynesia":"pf","antarctica":"aq"
+};
+function flagFromIso2(iso2){
+  if(!iso2 || iso2.length !== 2) return '';
+  const code = iso2.toUpperCase();
+  return String.fromCodePoint(...[...code].map(c => 127397 + c.charCodeAt(0)));
+}
+function flagForTrip(trip){
+  if(trip.countryCode) return flagFromIso2(trip.countryCode);
+  if(trip.country) return flagFromIso2(COUNTRY_ISO2[trip.country.trim().toLowerCase()]);
+  return '';
+}
 
 function uid(){
   return 't_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,7);
@@ -388,6 +716,79 @@ const CONTINENT_MAP = {
 function guessContinent(country){
   if(!country) return '';
   return CONTINENT_MAP[country.trim().toLowerCase()] || '';
+}
+
+/* ---------------------------------------------------------------
+   REUSABLE LOCATION PICKER (search Nominatim, pick a result)
+   Used for: home base, cruise ports, cruise-linked airports.
+   Returns {name, lat, lng, country, countryCode}
+--------------------------------------------------------------- */
+function createLocationPicker(rootEl, placeholder, initialValue){
+  rootEl.innerHTML = `
+    <div class="search-row">
+      <input type="text" class="lp-input" placeholder="${escapeHtml(placeholder)}">
+      <button type="button" class="btn btn-teal lp-search">Search</button>
+    </div>
+    <div class="lp-results"></div>
+    <div class="lp-selected"></div>
+  `;
+  const input = rootEl.querySelector('.lp-input');
+  const btn = rootEl.querySelector('.lp-search');
+  const resultsEl = rootEl.querySelector('.lp-results');
+  const selectedEl = rootEl.querySelector('.lp-selected');
+  let value = null;
+  let onChangeCb = null;
+
+  function renderSelected(){
+    selectedEl.textContent = value ? ('📍 ' + value.name + (value.country ? ', ' + value.country : '')) : '';
+  }
+
+  async function search(){
+    const q = input.value.trim();
+    if(!q) return;
+    resultsEl.style.display = 'block';
+    resultsEl.innerHTML = '<div>Searching…</div>';
+    try{
+      const res = await fetch('https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=' + encodeURIComponent(q));
+      const data = await res.json();
+      resultsEl.innerHTML = '';
+      if(!data.length){
+        resultsEl.innerHTML = '<div>No matches found</div>';
+        return;
+      }
+      data.forEach(r=>{
+        const div = document.createElement('div');
+        div.textContent = r.display_name;
+        div.addEventListener('click', ()=>{
+          value = {
+            name: r.display_name.split(',')[0],
+            lat: parseFloat(r.lat),
+            lng: parseFloat(r.lon),
+            country: (r.address && r.address.country) || '',
+            countryCode: (r.address && r.address.country_code) || ''
+          };
+          renderSelected();
+          resultsEl.style.display = 'none';
+          input.value = '';
+          if(onChangeCb) onChangeCb(value);
+        });
+        resultsEl.appendChild(div);
+      });
+    }catch(e){
+      resultsEl.innerHTML = '<div>Search failed — check your connection</div>';
+    }
+  }
+  btn.addEventListener('click', search);
+  input.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); search(); } });
+
+  if(initialValue){ value = initialValue; renderSelected(); }
+
+  return {
+    getValue: ()=> value,
+    setValue: (v)=>{ value = v; renderSelected(); },
+    clear: ()=>{ value = null; input.value=''; renderSelected(); },
+    onChange: (cb)=>{ onChangeCb = cb; }
+  };
 }
 
 /* ---------------------------------------------------------------
@@ -483,15 +884,18 @@ const endDS = makeDateSelect('dsEnd');
 /* ---------------------------------------------------------------
    VIEW SWITCHING
 --------------------------------------------------------------- */
-document.querySelectorAll('nav.tabs button').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('view-'+btn.dataset.view).classList.add('active');
-    if(btn.dataset.view === 'map'){ initMapIfNeeded(); renderMap(); }
-    if(btn.dataset.view === 'stats'){ renderStats(); }
-  });
+function switchView(name){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.view === name));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const target = document.getElementById('view-'+name);
+  if(target) target.classList.add('active');
+  if(name === 'map'){ initMapIfNeeded(); renderMap(); }
+  if(name === 'stats'){ renderStats(); }
+  if(name === 'settings'){ renderSettingsView(); }
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('[data-view]').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchView(btn.dataset.view));
 });
 
 /* ---------------------------------------------------------------
@@ -511,17 +915,105 @@ document.getElementById('cancelForm').addEventListener('click', ()=>{
 });
 
 function clearForm(){
-  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanions','fNotes'].forEach(id=>{
+  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes'].forEach(id=>{
     document.getElementById(id).value = '';
   });
   document.getElementById('fContinent').value = '';
+  document.getElementById('fCountryCode').value = '';
   document.getElementById('geoResults').style.display = 'none';
   document.getElementById('geoStatus').textContent = '';
   document.getElementById('fPlace').dataset.userEdited = '';
   startDS.reset();
   endDS.reset();
   delete endDS.el.dataset.userEdited;
+  renderCompanionCheckboxes([]);
+  document.getElementById('fIsFlight').checked = false;
+  document.getElementById('fIsCruise').checked = false;
+  document.getElementById('cruisePanel').style.display = 'none';
+  clearCruisePorts();
+  updateCruiseFlightVisibility();
 }
+
+/* ---------------------------------------------------------------
+   COMPANIONS (checkbox picker inside the trip form)
+--------------------------------------------------------------- */
+function escapeAttr(s){
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function renderCompanionCheckboxes(checkedNames){
+  checkedNames = checkedNames || [];
+  const container = document.getElementById('companionCheckList');
+  const emptyNote = document.getElementById('companionEmptyNote');
+  container.innerHTML = '';
+  if(!settings.companions.length){
+    emptyNote.style.display = 'block';
+    return;
+  }
+  emptyNote.style.display = 'none';
+  settings.companions.forEach(name=>{
+    const isChecked = checkedNames.includes(name);
+    const label = document.createElement('label');
+    label.className = 'companion-chip' + (isChecked ? ' checked' : '');
+    label.innerHTML = `<input type="checkbox" value="${escapeAttr(name)}" ${isChecked?'checked':''}> ${escapeHtml(name)}`;
+    const cb = label.querySelector('input');
+    cb.addEventListener('change', ()=> label.classList.toggle('checked', cb.checked));
+    container.appendChild(label);
+  });
+}
+function getCheckedCompanions(){
+  return Array.from(document.querySelectorAll('#companionCheckList input:checked')).map(cb=>cb.value);
+}
+document.getElementById('goToSettingsFromForm').addEventListener('click', ()=> switchView('settings'));
+
+/* ---------------------------------------------------------------
+   FLIGHT / CRUISE TOGGLES + CRUISE PORT PICKERS
+--------------------------------------------------------------- */
+const startPortPicker = createLocationPicker(document.getElementById('lpStartPort'), 'Search for the embarkation port');
+const endPortPicker = createLocationPicker(document.getElementById('lpEndPort'), 'Search for the disembarkation port');
+const departureAirportPicker = createLocationPicker(document.getElementById('lpDepartureAirport'), 'Search for the outbound airport');
+const arrivalAirportPicker = createLocationPicker(document.getElementById('lpArrivalAirport'), 'Search for the return airport');
+let betweenPorts = []; // {wrapper, picker}
+
+function addBetweenPortRow(initialValue){
+  const wrapper = document.createElement('div');
+  wrapper.className = 'port-row';
+  wrapper.innerHTML = `
+    <div class="lp-wrap">
+      <label>Port along the way</label>
+      <div class="lp-container"></div>
+    </div>
+    <button type="button" class="btn btn-rust">✕</button>
+  `;
+  document.getElementById('portsBetween').appendChild(wrapper);
+  const picker = createLocationPicker(wrapper.querySelector('.lp-container'), 'Search for a port', initialValue);
+  wrapper.querySelector('button').addEventListener('click', ()=>{
+    betweenPorts = betweenPorts.filter(p => p.wrapper !== wrapper);
+    wrapper.remove();
+  });
+  betweenPorts.push({ wrapper, picker });
+}
+document.getElementById('addPortBtn').addEventListener('click', ()=> addBetweenPortRow());
+
+function clearCruisePorts(){
+  betweenPorts.forEach(p => p.wrapper.remove());
+  betweenPorts = [];
+  startPortPicker.clear();
+  endPortPicker.clear();
+  departureAirportPicker.clear();
+  arrivalAirportPicker.clear();
+}
+
+function updateCruiseFlightVisibility(){
+  const isCruise = document.getElementById('fIsCruise').checked;
+  const isFlight = document.getElementById('fIsFlight').checked;
+  document.getElementById('cruiseAirports').style.display = (isCruise && isFlight) ? 'block' : 'none';
+  document.getElementById('cruiseFlightNote').style.display = (isCruise && !isFlight) ? 'block' : 'none';
+}
+document.getElementById('fIsFlight').addEventListener('change', updateCruiseFlightVisibility);
+document.getElementById('fIsCruise').addEventListener('change', ()=>{
+  document.getElementById('cruisePanel').style.display = document.getElementById('fIsCruise').checked ? 'block' : 'none';
+  updateCruiseFlightVisibility();
+});
 
 /* Nominatim geocoding — free, no API key, low request volume (personal use) */
 document.getElementById('searchBtn').addEventListener('click', doGeocode);
@@ -565,6 +1057,7 @@ async function doGeocode(){
         document.getElementById('fLng').value = parseFloat(r.lon).toFixed(5);
         const country = (r.address && r.address.country) || '';
         document.getElementById('fCountry').value = country;
+        document.getElementById('fCountryCode').value = (r.address && r.address.country_code) || '';
         document.getElementById('fContinent').value = guessContinent(country);
         resultsEl.style.display = 'none';
         statusEl.textContent = 'Selected — adjust anything below if needed.';
@@ -583,12 +1076,18 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
   const lng = parseFloat(document.getElementById('fLng').value);
   const start = startDS.getValue();
   const end = endDS.getValue() || start;
+  const isFlight = document.getElementById('fIsFlight').checked;
+  const isCruise = document.getElementById('fIsCruise').checked;
 
   const missing = [];
   if(!place) missing.push('display name');
   if(isNaN(lat)) missing.push('latitude');
   if(isNaN(lng)) missing.push('longitude');
   if(!start) missing.push('start date');
+  if(isCruise && !startPortPicker.getValue()) missing.push('cruise start port');
+  if(isCruise && !endPortPicker.getValue()) missing.push('cruise end port');
+  if(isCruise && isFlight && !departureAirportPicker.getValue()) missing.push('outbound airport');
+  if(isCruise && isFlight && !arrivalAirportPicker.getValue()) missing.push('return airport');
   if(missing.length){
     alert('Missing: ' + missing.join(', ') + '.\n\nTip: if you searched for a place, make sure you clicked one of the results in the dropdown — searching alone doesn\'t fill in the fields.');
     return;
@@ -603,11 +1102,22 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     place,
     lat, lng,
     country: document.getElementById('fCountry').value.trim(),
+    countryCode: document.getElementById('fCountryCode').value.trim(),
     continent: document.getElementById('fContinent').value,
     startDate: start,
     endDate: end,
-    companions: document.getElementById('fCompanions').value.trim(),
-    notes: document.getElementById('fNotes').value.trim()
+    companions: getCheckedCompanions(),
+    companionsOther: document.getElementById('fCompanionsOther').value.trim(),
+    notes: document.getElementById('fNotes').value.trim(),
+    isFlight,
+    isCruise,
+    cruise: isCruise ? {
+      startPort: startPortPicker.getValue(),
+      endPort: endPortPicker.getValue(),
+      ports: betweenPorts.map(p => p.picker.getValue()).filter(Boolean),
+      departureAirport: isFlight ? departureAirportPicker.getValue() : null,
+      arrivalAirport: isFlight ? arrivalAirportPicker.getValue() : null
+    } : null
   };
 
   if(editingId){
@@ -622,6 +1132,61 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
 });
 
 /* ---------------------------------------------------------------
+   SETTINGS VIEW
+--------------------------------------------------------------- */
+let homePicker = null;
+function renderSettingsView(){
+  if(!homePicker){
+    homePicker = createLocationPicker(document.getElementById('lpHome'), 'Search for your home city', settings.home);
+  }else{
+    homePicker.setValue(settings.home);
+  }
+  renderCompanionChips();
+}
+function renderCompanionChips(){
+  const container = document.getElementById('companionChips');
+  container.innerHTML = '';
+  if(!settings.companions.length){
+    container.innerHTML = '<div class="companion-empty-note">No companions added yet.</div>';
+    return;
+  }
+  settings.companions.forEach((name, idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'settings-chip';
+    chip.innerHTML = `<span>${escapeHtml(name)}</span><button type="button">✕</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      settings.companions.splice(idx, 1);
+      saveSettings(settings);
+      renderCompanionChips();
+    });
+    container.appendChild(chip);
+  });
+}
+document.getElementById('addCompanionBtn').addEventListener('click', ()=>{
+  const input = document.getElementById('newCompanionInput');
+  const name = input.value.trim();
+  if(!name) return;
+  if(settings.companions.some(c => c.toLowerCase() === name.toLowerCase())){
+    input.value = '';
+    return;
+  }
+  settings.companions.push(name);
+  saveSettings(settings);
+  input.value = '';
+  renderCompanionChips();
+});
+document.getElementById('newCompanionInput').addEventListener('keydown', e=>{
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('addCompanionBtn').click(); }
+});
+document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
+  settings.home = homePicker.getValue();
+  saveSettings(settings);
+  const confirmEl = document.getElementById('settingsSaveConfirm');
+  confirmEl.classList.add('show');
+  setTimeout(()=> confirmEl.classList.remove('show'), 2000);
+});
+
+/* ---------------------------------------------------------------
    TRIP LIST RENDERING
 --------------------------------------------------------------- */
 function visitCounts(){
@@ -633,21 +1198,61 @@ function visitCounts(){
   return counts;
 }
 
+function companionNames(trip){
+  const names = [...(trip.companions || [])];
+  if(trip.companionsOther) names.push(trip.companionsOther);
+  return names;
+}
+
+function tripDistances(trip){
+  const home = settings.home;
+  let fromHomeKm = null, airKm = 0, cruiseKm = 0;
+  if(home){
+    fromHomeKm = haversineKm(home.lat, home.lng, trip.lat, trip.lng);
+  }
+  if(trip.isFlight){
+    if(trip.isCruise && trip.cruise){
+      if(home && trip.cruise.departureAirport) airKm += haversineKm(home.lat, home.lng, trip.cruise.departureAirport.lat, trip.cruise.departureAirport.lng);
+      if(home && trip.cruise.arrivalAirport) airKm += haversineKm(trip.cruise.arrivalAirport.lat, trip.cruise.arrivalAirport.lng, home.lat, home.lng);
+    }else if(home){
+      airKm = 2 * haversineKm(home.lat, home.lng, trip.lat, trip.lng);
+    }
+  }
+  if(trip.isCruise && trip.cruise && trip.cruise.startPort && trip.cruise.endPort){
+    const chain = [trip.cruise.startPort, ...(trip.cruise.ports||[]), trip.cruise.endPort];
+    for(let i=0; i<chain.length-1; i++){
+      cruiseKm += haversineKm(chain[i].lat, chain[i].lng, chain[i+1].lat, chain[i+1].lng);
+    }
+  }
+  return { fromHomeKm, airKm, cruiseKm };
+}
+
 function tripCard(trip, counts){
   const upcoming = isUpcoming(trip);
   const count = counts[placeKey(trip)];
   const days = dayCount(trip.startDate, trip.endDate);
+  const flag = flagForTrip(trip);
+  const names = companionNames(trip);
+  const dist = tripDistances(trip);
+  const badges = [];
+  if(trip.isFlight) badges.push('✈️');
+  if(trip.isCruise) badges.push('🚢');
+
+  const metaParts = [];
+  metaParts.push(`<span class="mono">${trip.startDate} → ${trip.endDate}</span>`);
+  metaParts.push(`<span>${days} day${days!==1?'s':''}</span>`);
+  if(trip.country) metaParts.push(`<span>${escapeHtml(trip.country)}</span>`);
+  if(names.length) metaParts.push(`<span>with ${escapeHtml(names.join(', '))}</span>`);
+  if(dist.fromHomeKm !== null) metaParts.push(`<span class="mono">${Math.round(dist.fromHomeKm).toLocaleString()} km from home</span>`);
+  if(trip.isFlight && dist.airKm > 0) metaParts.push(`<span class="mono">✈️ ${Math.round(kmToMiles(dist.airKm)).toLocaleString()} mi</span>`);
+  if(trip.isCruise && dist.cruiseKm > 0) metaParts.push(`<span class="mono">🚢 ${Math.round(kmToNm(dist.cruiseKm)).toLocaleString()} nm</span>`);
+
   const div = document.createElement('div');
   div.className = 'trip-card ' + (upcoming ? 'upcoming' : 'past');
   div.innerHTML = `
     <div class="trip-main">
-      <h3>${escapeHtml(trip.place)} ${count > 1 ? `<span class="stamp">×${count}</span>` : ''}</h3>
-      <div class="trip-meta">
-        <span class="mono">${trip.startDate} → ${trip.endDate}</span>
-        <span>${days} day${days!==1?'s':''}</span>
-        ${trip.country ? `<span>${escapeHtml(trip.country)}</span>` : ''}
-        ${trip.companions ? `<span>with ${escapeHtml(trip.companions)}</span>` : ''}
-      </div>
+      <h3>${flag ? flag+' ' : ''}${escapeHtml(trip.place)} ${badges.join(' ')} ${count > 1 ? `<span class="stamp">×${count}</span>` : ''}</h3>
+      <div class="trip-meta">${metaParts.join('')}</div>
       ${trip.notes ? `<div class="trip-notes">${escapeHtml(trip.notes)}</div>` : ''}
     </div>
     <div class="trip-actions">
@@ -709,12 +1314,28 @@ document.addEventListener('click', e=>{
     document.getElementById('fLat').value = t.lat;
     document.getElementById('fLng').value = t.lng;
     document.getElementById('fCountry').value = t.country;
+    document.getElementById('fCountryCode').value = t.countryCode || '';
     document.getElementById('fContinent').value = t.continent;
     startDS.setValue(t.startDate);
     endDS.setValue(t.endDate);
     endDS.el.dataset.userEdited = '1'; // preserve existing end date; don't auto-overwrite on edit
-    document.getElementById('fCompanions').value = t.companions;
+    renderCompanionCheckboxes(t.companions || []);
+    document.getElementById('fCompanionsOther').value = t.companionsOther || '';
     document.getElementById('fNotes').value = t.notes;
+
+    document.getElementById('fIsFlight').checked = !!t.isFlight;
+    document.getElementById('fIsCruise').checked = !!t.isCruise;
+    document.getElementById('cruisePanel').style.display = t.isCruise ? 'block' : 'none';
+    clearCruisePorts();
+    if(t.isCruise && t.cruise){
+      startPortPicker.setValue(t.cruise.startPort || null);
+      endPortPicker.setValue(t.cruise.endPort || null);
+      (t.cruise.ports || []).forEach(p => addBetweenPortRow(p));
+      departureAirportPicker.setValue(t.cruise.departureAirport || null);
+      arrivalAirportPicker.setValue(t.cruise.arrivalAirport || null);
+    }
+    updateCruiseFlightVisibility();
+
     document.getElementById('formTitle').textContent = 'Edit trip';
     form.style.display = 'block';
     form.scrollIntoView({behavior:'smooth'});
@@ -742,6 +1363,56 @@ function renderMap(){
   markerLayer.clearLayers();
   if(!trips.length) return;
 
+  const bounds = [];
+  const home = settings.home;
+
+  if(home){
+    const homeMarker = L.circleMarker([home.lat, home.lng], {
+      radius: 8, color:'#1c2b3a', weight:2, fillColor:'#f6f1e4', fillOpacity:1
+    });
+    homeMarker.bindPopup(`<strong>🏠 Home</strong><br>${escapeHtml(home.name)}`);
+    homeMarker.addTo(markerLayer);
+    bounds.push([home.lat, home.lng]);
+  }
+
+  // flight paths: dashed line from home to the flown-to airport(s) / destination
+  trips.forEach(t=>{
+    if(!home || !t.isFlight) return;
+    const flightColor = isUpcoming(t) ? '#9c7f1c' : '#3c6e71';
+    if(t.isCruise && t.cruise){
+      if(t.cruise.departureAirport){
+        L.polyline([[home.lat,home.lng],[t.cruise.departureAirport.lat,t.cruise.departureAirport.lng]], {color:flightColor, weight:2, dashArray:'6,6', opacity:.7}).addTo(markerLayer);
+      }
+      if(t.cruise.arrivalAirport){
+        L.polyline([[t.cruise.arrivalAirport.lat,t.cruise.arrivalAirport.lng],[home.lat,home.lng]], {color:flightColor, weight:2, dashArray:'6,6', opacity:.7}).addTo(markerLayer);
+      }
+    }else{
+      L.polyline([[home.lat,home.lng],[t.lat,t.lng]], {color:flightColor, weight:2, dashArray:'6,6', opacity:.7}).addTo(markerLayer);
+    }
+  });
+
+  // cruise routes: solid/dashed line through start port -> stops -> end port
+  trips.forEach(t=>{
+    if(!t.isCruise || !t.cruise || !t.cruise.startPort || !t.cruise.endPort) return;
+    const chain = [t.cruise.startPort, ...(t.cruise.ports||[]), t.cruise.endPort];
+    const latlngs = chain.map(p => [p.lat, p.lng]);
+    const upcoming = isUpcoming(t);
+    L.polyline(latlngs, {
+      color: upcoming ? '#9c7f1c' : '#2a4f52', weight: 3,
+      dashArray: upcoming ? '4,4' : null, opacity:.8
+    }).addTo(markerLayer);
+    chain.forEach((p,i)=>{
+      const isEndpoint = (i===0 || i===chain.length-1);
+      const portMarker = L.circleMarker([p.lat,p.lng], {
+        radius: isEndpoint ? 6 : 4, color:'#2a4f52', weight:1.5,
+        fillColor: isEndpoint ? '#c9a227' : '#f6f1e4', fillOpacity:.9
+      });
+      portMarker.bindPopup(`🚢 <strong>${escapeHtml(p.name)}</strong><br>${escapeHtml(t.place)}`);
+      portMarker.addTo(markerLayer);
+      bounds.push([p.lat, p.lng]);
+    });
+  });
+
   // group trips at (roughly) the same coordinates so repeat visits share one marker
   const groups = {};
   trips.forEach(t=>{
@@ -749,7 +1420,6 @@ function renderMap(){
     (groups[k] = groups[k] || []).push(t);
   });
 
-  const bounds = [];
   Object.values(groups).forEach(groupTrips=>{
     const anyUpcoming = groupTrips.some(isUpcoming);
     const anyPast = groupTrips.some(t=>!isUpcoming(t));
@@ -763,7 +1433,12 @@ function renderMap(){
     const marker = L.circleMarker([t0.lat, t0.lng], style);
     const popupHtml = groupTrips
       .sort((a,b)=>b.startDate.localeCompare(a.startDate))
-      .map(t=>`<strong>${escapeHtml(t.place)}</strong><br>${t.startDate} → ${t.endDate}${t.companions ? '<br>with '+escapeHtml(t.companions) : ''}`)
+      .map(t=>{
+        const flag = flagForTrip(t);
+        const names = companionNames(t);
+        const badges = [t.isFlight?'✈️':'', t.isCruise?'🚢':''].filter(Boolean).join(' ');
+        return `<strong>${flag?flag+' ':''}${escapeHtml(t.place)}</strong> ${badges}<br>${t.startDate} → ${t.endDate}${names.length ? '<br>with '+escapeHtml(names.join(', ')) : ''}`;
+      })
       .join('<hr style="margin:6px 0;border:none;border-top:1px solid #ddd0ac;">');
     marker.bindPopup(popupHtml);
     marker.addTo(markerLayer);
@@ -789,14 +1464,36 @@ function renderStats(){
   const countries = new Set(trips.map(t=>t.country).filter(Boolean));
   const continents = new Set(trips.map(t=>t.continent).filter(Boolean));
   const totalDays = trips.filter(t=>!isUpcoming(t)).reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate),0);
+  const flightsCount = trips.filter(t=>t.isFlight).length;
+  const cruisesCount = trips.filter(t=>t.isCruise).length;
+
+  let totalHomeKm = 0, totalAirKm = 0, totalCruiseKm = 0;
+  trips.forEach(t=>{
+    const d = tripDistances(t);
+    if(d.fromHomeKm !== null) totalHomeKm += d.fromHomeKm;
+    totalAirKm += d.airKm;
+    totalCruiseKm += d.cruiseKm;
+  });
 
   const stats = [
-    { num: trips.length, label:'Trips logged' },
-    { num: uniquePlaces, label:'Places' },
-    { num: countries.size, label:'Countries' },
-    { num: continents.size + ' / 7', label:'Continents' },
-    { num: totalDays, label:'Days travelled' },
+    { num: trips.length, label:'🧳 Trips logged' },
+    { num: uniquePlaces, label:'📍 Places' },
+    { num: countries.size, label:'🌐 Countries' },
+    { num: continents.size + ' / 7', label:'🌍 Continents' },
+    { num: totalDays, label:'📆 Days travelled' },
   ];
+  if(settings.home){
+    stats.push({ num: Math.round(totalHomeKm).toLocaleString(), label:'🏠 km from home (total)' });
+  }
+  if(flightsCount){
+    stats.push({ num: flightsCount, label:'✈️ Flights taken' });
+    if(totalAirKm > 0) stats.push({ num: Math.round(kmToMiles(totalAirKm)).toLocaleString(), label:'✈️ Air miles' });
+  }
+  if(cruisesCount){
+    stats.push({ num: cruisesCount, label:'🚢 Cruises taken' });
+    if(totalCruiseKm > 0) stats.push({ num: Math.round(kmToNm(totalCruiseKm)).toLocaleString(), label:'🚢 Nautical miles (approx)' });
+  }
+
   stats.forEach(s=>{
     const d = document.createElement('div');
     d.className = 'stat-stamp';
@@ -810,7 +1507,7 @@ function renderStats(){
   trips.forEach(t=>{
     const k = placeKey(t);
     counts[k] = (counts[k]||0)+1;
-    names[k] = t.place;
+    names[k] = (flagForTrip(t) ? flagForTrip(t)+' ' : '') + t.place;
   });
   const sortedPlaces = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
   const maxCount = sortedPlaces.length ? sortedPlaces[0][1] : 1;
@@ -818,6 +1515,21 @@ function renderStats(){
   visitsEl.innerHTML = sortedPlaces.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
   sortedPlaces.forEach(([k,c])=>{
     visitsEl.appendChild(barRow(names[k], c, maxCount));
+  });
+
+  // travelled with most
+  const companionCounts = {};
+  trips.forEach(t=>{
+    (t.companions||[]).forEach(name=>{
+      companionCounts[name] = (companionCounts[name]||0)+1;
+    });
+  });
+  const sortedCompanions = Object.entries(companionCounts).sort((a,b)=>b[1]-a[1]);
+  const maxCompanion = sortedCompanions.length ? sortedCompanions[0][1] : 1;
+  const companionsEl = document.getElementById('companionsBreakdown');
+  companionsEl.innerHTML = sortedCompanions.length ? '' : '<div class="empty-note">Add companions in Settings, then tag them on trips to see this.</div>';
+  sortedCompanions.forEach(([name,c])=>{
+    companionsEl.appendChild(barRow(name, c, maxCompanion));
   });
 
   // trips per year
