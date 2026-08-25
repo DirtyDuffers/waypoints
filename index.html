@@ -299,6 +299,14 @@
   .wish-actions{display:flex; flex-direction:column; gap:6px;}
   .wish-actions button{font-size:.75rem; padding:5px 10px;}
 
+  .chart-container{width:100%; overflow-x:auto;}
+  .chart-container svg{display:block; max-width:100%; font-family:'Inter',sans-serif;}
+  .chart-empty{font-size:.85rem; color:var(--ink-soft); padding:10px 0;}
+  .chart-tooltip-label{font-family:'JetBrains Mono',monospace; font-size:9px; fill:var(--ink-soft);}
+  .chart-legend{display:flex; flex-wrap:wrap; gap:10px 16px; margin-top:10px; font-size:.78rem;}
+  .chart-legend span{display:inline-flex; align-items:center; gap:5px;}
+  .chart-legend .swatch{width:10px; height:10px; border-radius:2px; display:inline-block;}
+
   .wrapped-overlay{
     position:fixed; inset:0; background:rgba(28,43,58,.88);
     display:none; align-items:center; justify-content:center; z-index:2000; padding:20px;
@@ -629,6 +637,27 @@
       <select id="wrappedYearSelect" style="max-width:140px; margin-right:8px;"></select>
       <button class="btn btn-teal" id="viewWrappedBtn" type="button">View recap</button>
     </div>
+    <div class="breakdown">
+      <h3>📈 Distance over time</h3>
+      <div id="chartDistanceTime" class="chart-container"></div>
+    </div>
+    <div class="breakdown">
+      <h3>🗓️ Trips by month</h3>
+      <div id="chartMonthHeatmap" class="chart-container"></div>
+    </div>
+    <div class="breakdown">
+      <h3>🚦 How you travel</h3>
+      <div id="chartTransportDonut" class="chart-container"></div>
+    </div>
+    <div class="breakdown">
+      <h3>📏 Trip length</h3>
+      <div id="chartTripLength" class="chart-container"></div>
+    </div>
+    <div class="breakdown">
+      <h3>🌍 Continents by year</h3>
+      <div id="chartContinentStack" class="chart-container"></div>
+    </div>
+
     <div class="breakdown">
       <h3>🏆 Visits per place</h3>
       <div id="visitsBreakdown"></div>
@@ -966,6 +995,41 @@ function placeKey(trip){
 }
 
 /* Minimal country -> continent lookup. Extend as needed. */
+/* Country-code based continent lookup — this is the reliable primary source,
+   since Nominatim always returns a proper ISO 3166-1 alpha-2 code even when
+   the country *name* it returns is an unusual variant (e.g. "Palestinian
+   Territories") that a name-based list would miss. Covers all UN-recognised
+   states plus common territories. */
+const CONTINENT_BY_CODE = {
+  gb:"Europe",ie:"Europe",fr:"Europe",de:"Europe",es:"Europe",it:"Europe",pt:"Europe",nl:"Europe",be:"Europe",
+  ch:"Europe",at:"Europe",gr:"Europe",pl:"Europe",cz:"Europe",hu:"Europe",se:"Europe",no:"Europe",dk:"Europe",
+  fi:"Europe",is:"Europe",hr:"Europe",si:"Europe",sk:"Europe",ro:"Europe",bg:"Europe",rs:"Europe",me:"Europe",
+  ba:"Europe",al:"Europe",mk:"Europe",ee:"Europe",lv:"Europe",lt:"Europe",mt:"Europe",cy:"Europe",lu:"Europe",
+  mc:"Europe",ua:"Europe",md:"Europe",by:"Europe",ru:"Europe",sm:"Europe",ad:"Europe",li:"Europe",va:"Europe",
+  xk:"Europe",fo:"Europe",gi:"Europe",im:"Europe",je:"Europe",gg:"Europe",
+  us:"North America",ca:"North America",mx:"North America",cu:"North America",jm:"North America",bs:"North America",
+  cr:"North America",pa:"North America",gt:"North America",bz:"North America",hn:"North America",ni:"North America",
+  sv:"North America",do:"North America",ht:"North America",tt:"North America",bb:"North America",ag:"North America",
+  dm:"North America",gd:"North America",kn:"North America",lc:"North America",vc:"North America",gl:"North America",
+  br:"South America",ar:"South America",cl:"South America",pe:"South America",co:"South America",ec:"South America",
+  bo:"South America",uy:"South America",py:"South America",ve:"South America",gy:"South America",sr:"South America",
+  fk:"South America",
+  jp:"Asia",cn:"Asia",kr:"Asia",kp:"Asia",in:"Asia",th:"Asia",vn:"Asia",id:"Asia",my:"Asia",sg:"Asia",ph:"Asia",
+  kh:"Asia",la:"Asia",mm:"Asia",np:"Asia",lk:"Asia",bd:"Asia",pk:"Asia",ae:"Asia",qa:"Asia",sa:"Asia",il:"Asia",
+  ps:"Asia",jo:"Asia",lb:"Asia",tr:"Asia",ge:"Asia",am:"Asia",az:"Asia",kz:"Asia",uz:"Asia",tm:"Asia",tj:"Asia",
+  kg:"Asia",mn:"Asia",tw:"Asia",hk:"Asia",mo:"Asia",om:"Asia",kw:"Asia",bh:"Asia",iq:"Asia",ir:"Asia",af:"Asia",
+  sy:"Asia",ye:"Asia",bt:"Asia",mv:"Asia",bn:"Asia",tl:"Asia",
+  eg:"Africa",ma:"Africa",tn:"Africa",dz:"Africa",ly:"Africa",za:"Africa",ke:"Africa",tz:"Africa",ug:"Africa",
+  et:"Africa",gh:"Africa",ng:"Africa",sn:"Africa",na:"Africa",bw:"Africa",zw:"Africa",zm:"Africa",mz:"Africa",
+  rw:"Africa",mu:"Africa",sc:"Africa",mg:"Africa",cv:"Africa",gm:"Africa",gn:"Africa",gw:"Africa",sl:"Africa",
+  lr:"Africa",ci:"Africa",tg:"Africa",bj:"Africa",ne:"Africa",bf:"Africa",ml:"Africa",td:"Africa",cf:"Africa",
+  cg:"Africa",cd:"Africa",ga:"Africa",gq:"Africa",st:"Africa",km:"Africa",dj:"Africa",er:"Africa",so:"Africa",
+  sd:"Africa",ss:"Africa",ao:"Africa",mw:"Africa",bi:"Africa",ls:"Africa",sz:"Africa",
+  au:"Oceania",nz:"Oceania",fj:"Oceania",pg:"Oceania",ws:"Oceania",to:"Oceania",vu:"Oceania",nc:"Oceania",
+  pf:"Oceania",fm:"Oceania",pw:"Oceania",mh:"Oceania",ki:"Oceania",nr:"Oceania",tv:"Oceania",sb:"Oceania",
+  aq:"Antarctica"
+};
+
 const CONTINENT_MAP = {
   "united kingdom":"Europe","england":"Europe","scotland":"Europe","wales":"Europe","northern ireland":"Europe",
   "ireland":"Europe","france":"Europe","germany":"Europe","spain":"Europe","italy":"Europe","portugal":"Europe",
@@ -1002,9 +1066,20 @@ const CONTINENT_MAP = {
   "samoa":"Oceania","tonga":"Oceania","vanuatu":"Oceania","new caledonia":"Oceania","french polynesia":"Oceania",
   "antarctica":"Antarctica"
 };
-function guessContinent(country){
+function guessContinent(country, countryCode){
+  if(countryCode && CONTINENT_BY_CODE[countryCode.trim().toLowerCase()]){
+    return CONTINENT_BY_CODE[countryCode.trim().toLowerCase()];
+  }
   if(!country) return '';
   return CONTINENT_MAP[country.trim().toLowerCase()] || '';
+}
+
+/* For display purposes, recover a continent for older saved trips that
+   predate the code-based lookup (or whose country name wasn't in the old
+   name-only list) rather than leaving them stuck as "Unspecified" forever. */
+function effectiveContinent(trip){
+  if(trip.continent) return trip.continent;
+  return guessContinent(trip.country, trip.countryCode);
 }
 
 /* ---------------------------------------------------------------
@@ -1381,9 +1456,10 @@ async function doGeocode(){
         document.getElementById('fLat').value = parseFloat(r.lat).toFixed(5);
         document.getElementById('fLng').value = parseFloat(r.lon).toFixed(5);
         const country = (r.address && r.address.country) || '';
+        const countryCode = (r.address && r.address.country_code) || '';
         document.getElementById('fCountry').value = country;
-        document.getElementById('fCountryCode').value = (r.address && r.address.country_code) || '';
-        document.getElementById('fContinent').value = guessContinent(country);
+        document.getElementById('fCountryCode').value = countryCode;
+        document.getElementById('fContinent').value = guessContinent(country, countryCode);
         resultsEl.style.display = 'none';
         statusEl.textContent = 'Selected — adjust anything below if needed.';
       });
@@ -1665,6 +1741,7 @@ document.getElementById('aboutVersion').addEventListener('click', ()=>{
 
 function runDataIntegrityCheck(){
   const issues = [];
+  let fixableContinents = 0;
 
   trips.forEach(t=>{
     if(typeof t.lat !== 'number' || typeof t.lng !== 'number' || isNaN(t.lat) || isNaN(t.lng)){
@@ -1676,6 +1753,15 @@ function runDataIntegrityCheck(){
     if(t.isCruise && t.cruise){
       if(!t.cruise.startPort || !t.cruise.endPort){
         issues.push(`"${t.place}" is marked as a cruise but is missing a start or end port.`);
+      }
+    }
+    if(!t.continent){
+      const recovered = guessContinent(t.country, t.countryCode);
+      if(recovered){
+        fixableContinents++;
+        issues.push(`"${t.place}" (${t.country}) has no continent saved — this can be auto-fixed.`);
+      }else{
+        issues.push(`"${t.place}" (${t.country || 'no country set'}) has no continent, and it can't be worked out automatically — edit it manually.`);
       }
     }
   });
@@ -1691,19 +1777,40 @@ function runDataIntegrityCheck(){
     }
   }
 
-  return issues;
+  return { issues, fixableContinents };
+}
+
+function fixMissingContinents(){
+  let fixed = 0;
+  trips.forEach(t=>{
+    if(!t.continent){
+      const recovered = guessContinent(t.country, t.countryCode);
+      if(recovered){ t.continent = recovered; fixed++; }
+    }
+  });
+  if(fixed > 0){
+    saveTrips(trips);
+  }
+  return fixed;
 }
 
 document.getElementById('runIntegrityCheckBtn').addEventListener('click', ()=>{
-  const issues = runDataIntegrityCheck();
+  const { issues, fixableContinents } = runDataIntegrityCheck();
   const resultsEl = document.getElementById('integrityResults');
   if(!issues.length){
     resultsEl.innerHTML = `<div style="color:var(--teal-dark);">✅ No issues found across ${trips.length} trip${trips.length!==1?'s':''}.</div>`;
   }else{
     resultsEl.innerHTML = `<div style="color:var(--rust); margin-bottom:6px;">⚠️ ${issues.length} issue${issues.length!==1?'s':''} found:</div>` +
-      '<ul style="margin:0; padding-left:20px;">' + issues.map(i=>`<li>${escapeHtml(i)}</li>`).join('') + '</ul>';
+      '<ul style="margin:0; padding-left:20px;">' + issues.map(i=>`<li>${escapeHtml(i)}</li>`).join('') + '</ul>' +
+      (fixableContinents > 0 ? `<button class="btn btn-teal" id="fixContinentsBtn" style="margin-top:10px;">🔧 Auto-fix ${fixableContinents} missing continent${fixableContinents!==1?'s':''}</button>` : '');
   }
   console.log('Waypoints data integrity check:', issues.length ? issues : 'no issues found');
+});
+document.addEventListener('click', e=>{
+  if(e.target.id !== 'fixContinentsBtn') return;
+  const fixed = fixMissingContinents();
+  document.getElementById('integrityResults').innerHTML = `<div style="color:var(--teal-dark);">✅ Fixed ${fixed} trip${fixed!==1?'s':''}. Run the check again to confirm.</div>`;
+  renderTrips();
 });
 
 /* ---------------------------------------------------------------
@@ -1736,7 +1843,7 @@ document.getElementById('saveWish').addEventListener('click', ()=>{
     id: editingWishId || uid(),
     name: place.name, lat: place.lat, lng: place.lng,
     country: place.country || '', countryCode: place.countryCode || '',
-    continent: guessContinent(place.country),
+    continent: guessContinent(place.country, place.countryCode),
     notes: document.getElementById('wNotes').value.trim()
   };
   if(editingWishId){
@@ -2312,7 +2419,7 @@ function renderStats(){
 
   const uniquePlaces = new Set(trips.map(placeKey)).size;
   const countries = new Set(trips.map(t=>t.country).filter(Boolean));
-  const continents = new Set(trips.map(t=>t.continent).filter(Boolean));
+  const continents = new Set(trips.map(t=>effectiveContinent(t)).filter(Boolean));
   const totalDays = trips.filter(t=>!isUpcoming(t)).reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate),0);
   const flightsCount = trips.filter(t=>t.isFlight).length;
   const cruisesCount = trips.filter(t=>t.isCruise).length;
@@ -2445,7 +2552,7 @@ function renderStats(){
   // by continent
   const contCounts = {};
   trips.forEach(t=>{
-    const c = t.continent || 'Unspecified';
+    const c = effectiveContinent(t) || 'Unspecified';
     contCounts[c] = (contCounts[c]||0)+1;
   });
   const sortedCont = Object.entries(contCounts).sort((a,b)=>b[1]-a[1]);
@@ -2491,6 +2598,7 @@ function renderStats(){
     totalDays, flightsCount, cruisesCount, drivesCount, trainsCount, boatsCount
   });
   populateWrappedYearSelect();
+  renderCharts();
 }
 
 const MILESTONES = [
@@ -2529,6 +2637,225 @@ function renderMilestones(s){
 }
 
 /* ---------------------------------------------------------------
+   CHARTS (hand-rolled inline SVG — no charting library, consistent
+   with the rest of the app's no-dependencies approach)
+--------------------------------------------------------------- */
+const CONTINENT_COLORS = {
+  'Europe':'#3c6e71', 'Asia':'#c9a227', 'North America':'#a34a3a', 'South America':'#6b5b95',
+  'Africa':'#4a7c59', 'Oceania':'#2a4f52', 'Antarctica':'#8899aa'
+};
+const TRANSPORT_COLORS = {
+  'Flight':'#3c6e71', 'Cruise':'#c9a227', 'Drive':'#a34a3a', 'Train':'#6b5b95', 'Boat':'#2a4f52'
+};
+
+function renderCharts(){
+  renderDistanceOverTimeChart();
+  renderMonthHeatmap();
+  renderTransportDonut();
+  renderTripLengthHistogram();
+  renderContinentStack();
+}
+
+function emptyChart(containerId, message){
+  document.getElementById(containerId).innerHTML = `<div class="chart-empty">${escapeHtml(message)}</div>`;
+}
+
+/* --- 1. Distance over time (cumulative line chart) --- */
+function renderDistanceOverTimeChart(){
+  const containerId = 'chartDistanceTime';
+  if(!settings.home){
+    emptyChart(containerId, 'Set your home location in Settings to see this chart.');
+    return;
+  }
+  const years = [...new Set(trips.map(t=>t.startDate.slice(0,4)))].sort();
+  if(!years.length){ emptyChart(containerId, 'No trips logged yet.'); return; }
+
+  const perYearKm = years.map(y=>{
+    return trips.filter(t=>t.startDate.slice(0,4)===y)
+      .reduce((sum,t)=>{ const d = tripDistances(t); return sum + (d.fromHomeKm||0); }, 0);
+  });
+  let cumulative = 0;
+  const points = perYearKm.map(km=>{
+    cumulative += km;
+    return settings.unit === 'metric' ? cumulative : kmToMiles(cumulative);
+  });
+  const unitWord = settings.unit === 'metric' ? 'km' : 'mi';
+
+  const W = 320, H = 160, padL = 38, padB = 24, padT = 12, padR = 12;
+  const chartW = W - padL - padR, chartH = H - padT - padB;
+  const maxVal = Math.max(...points, 1);
+
+  const xAt = i => padL + (years.length===1 ? chartW/2 : (i/(years.length-1))*chartW);
+  const yAt = v => padT + chartH - (v/maxVal)*chartH;
+
+  const linePath = points.map((v,i)=>`${i===0?'M':'L'}${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(' ');
+  const areaPath = linePath + ` L${xAt(points.length-1).toFixed(1)},${(padT+chartH).toFixed(1)} L${xAt(0).toFixed(1)},${(padT+chartH).toFixed(1)} Z`;
+
+  const circles = points.map((v,i)=>`<circle cx="${xAt(i).toFixed(1)}" cy="${yAt(v).toFixed(1)}" r="3.5" fill="#3c6e71"><title>${years[i]}: ${Math.round(v).toLocaleString()} ${unitWord}</title></circle>`).join('');
+  const xLabels = years.map((y,i)=>`<text x="${xAt(i).toFixed(1)}" y="${H-6}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`).join('');
+  const yMaxLabel = `<text x="${padL-6}" y="${padT+4}" text-anchor="end" class="chart-tooltip-label">${Math.round(maxVal).toLocaleString()}</text>`;
+  const yZeroLabel = `<text x="${padL-6}" y="${padT+chartH}" text-anchor="end" class="chart-tooltip-label">0</text>`;
+  const gridLine = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/><line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/>`;
+
+  document.getElementById(containerId).innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+      <defs>
+        <linearGradient id="distGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#3c6e71" stop-opacity="0.35"/>
+          <stop offset="100%" stop-color="#3c6e71" stop-opacity="0.02"/>
+        </linearGradient>
+      </defs>
+      ${gridLine}
+      <path d="${areaPath}" fill="url(#distGrad)"/>
+      <path d="${linePath}" fill="none" stroke="#3c6e71" stroke-width="2"/>
+      ${circles}
+      ${xLabels}
+      ${yMaxLabel}${yZeroLabel}
+    </svg>
+    <div class="chart-legend"><span>Cumulative distance from home, ${unitWord}</span></div>
+  `;
+}
+
+/* --- 2. Trips by month (heatmap grid) --- */
+function renderMonthHeatmap(){
+  const containerId = 'chartMonthHeatmap';
+  if(!trips.length){ emptyChart(containerId, 'No trips logged yet.'); return; }
+  const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const counts = new Array(12).fill(0);
+  trips.forEach(t=>{ counts[parseInt(t.startDate.slice(5,7),10)-1]++; });
+  const max = Math.max(...counts, 1);
+
+  const cells = counts.map((c,i)=>{
+    const intensity = c === 0 ? 0.06 : 0.18 + (c/max)*0.74;
+    return `<div style="background:rgba(60,110,113,${intensity.toFixed(2)}); border-radius:8px; padding:10px 4px; text-align:center;">
+      <div style="font-size:.7rem; color:${c>max*0.5?'#fff':'var(--ink-soft)'}; text-transform:uppercase; letter-spacing:.03em;">${MONTH_ABBR[i]}</div>
+      <div style="font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1rem; color:${c>max*0.5?'#fff':'var(--ink)'};">${c}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById(containerId).innerHTML = `<div style="display:grid; grid-template-columns:repeat(4,1fr); gap:6px;">${cells}</div>`;
+}
+
+/* --- 3. Transport mode donut --- */
+function renderTransportDonut(){
+  const containerId = 'chartTransportDonut';
+  const counts = {
+    'Flight': trips.filter(t=>t.isFlight).length,
+    'Cruise': trips.filter(t=>t.isCruise).length,
+    'Drive': trips.filter(t=>t.isDrive).length,
+    'Train': trips.filter(t=>t.isTrain).length,
+    'Boat': trips.filter(t=>t.isBoat).length,
+  };
+  const total = Object.values(counts).reduce((a,b)=>a+b,0);
+  if(total === 0){ emptyChart(containerId, "Mark trips with a transport mode (flight, cruise, drive, train, boat) to see this chart."); return; }
+
+  const r = 54, cx = 70, cy = 70, strokeW = 22;
+  const circumference = 2*Math.PI*r;
+  let offset = 0;
+  const segments = Object.entries(counts).filter(([,c])=>c>0).map(([mode,c])=>{
+    const len = (c/total)*circumference;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${TRANSPORT_COLORS[mode]}" stroke-width="${strokeW}"
+      stroke-dasharray="${len.toFixed(2)} ${(circumference-len).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}">
+      <title>${mode}: ${c} trip${c!==1?'s':''}</title></circle>`;
+    offset += len;
+    return seg;
+  }).join('');
+
+  const legend = Object.entries(counts).filter(([,c])=>c>0).map(([mode,c])=>
+    `<span><span class="swatch" style="background:${TRANSPORT_COLORS[mode]}"></span>${mode} (${c})</span>`
+  ).join('');
+
+  document.getElementById(containerId).innerHTML = `
+    <svg viewBox="0 0 140 140" width="140" height="140">
+      <g transform="rotate(-90 ${cx} ${cy})">${segments}</g>
+      <text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="20" fill="var(--ink)">${total}</text>
+      <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="9" fill="var(--ink-soft)">trip legs</text>
+    </svg>
+    <div class="chart-legend">${legend}</div>
+  `;
+}
+
+/* --- 4. Trip length distribution (histogram) --- */
+function renderTripLengthHistogram(){
+  const containerId = 'chartTripLength';
+  if(!trips.length){ emptyChart(containerId, 'No trips logged yet.'); return; }
+  const buckets = [
+    { label:'1 day', test: d => d === 1 },
+    { label:'2–3', test: d => d >= 2 && d <= 3 },
+    { label:'4–7', test: d => d >= 4 && d <= 7 },
+    { label:'8–14', test: d => d >= 8 && d <= 14 },
+    { label:'15+', test: d => d >= 15 },
+  ];
+  const counts = buckets.map(()=>0);
+  trips.forEach(t=>{
+    const d = dayCount(t.startDate, t.endDate);
+    const idx = buckets.findIndex(b=>b.test(d));
+    if(idx >= 0) counts[idx]++;
+  });
+  const max = Math.max(...counts, 1);
+
+  const W = 280, H = 140, padB = 26, padT = 16, barGap = 10;
+  const barW = (W - barGap*(buckets.length+1)) / buckets.length;
+  const bars = counts.map((c,i)=>{
+    const barH = (c/max) * (H-padB-padT);
+    const x = barGap + i*(barW+barGap);
+    const y = H - padB - barH;
+    return `
+      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4" fill="#3c6e71">
+        <title>${buckets[i].label} days: ${c} trip${c!==1?'s':''}</title>
+      </rect>
+      <text x="${(x+barW/2).toFixed(1)}" y="${(y-4).toFixed(1)}" text-anchor="middle" class="chart-tooltip-label" fill="var(--ink)">${c}</text>
+      <text x="${(x+barW/2).toFixed(1)}" y="${H-8}" text-anchor="middle" class="chart-tooltip-label">${buckets[i].label}</text>
+    `;
+  }).join('');
+
+  document.getElementById(containerId).innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${bars}</svg>`;
+}
+
+/* --- 5. Continents by year (stacked bar) --- */
+function renderContinentStack(){
+  const containerId = 'chartContinentStack';
+  if(!trips.length){ emptyChart(containerId, 'No trips logged yet.'); return; }
+  const years = [...new Set(trips.map(t=>t.startDate.slice(0,4)))].sort();
+  const continentsUsed = [...new Set(trips.map(t=>effectiveContinent(t)).filter(Boolean))];
+  if(!continentsUsed.length){ emptyChart(containerId, 'No continent data yet.'); return; }
+
+  const dataByYear = years.map(y=>{
+    const yearTrips = trips.filter(t=>t.startDate.slice(0,4)===y);
+    const byContinent = {};
+    continentsUsed.forEach(c=> byContinent[c] = yearTrips.filter(t=>effectiveContinent(t)===c).length);
+    return byContinent;
+  });
+  const yearTotals = dataByYear.map(d => Object.values(d).reduce((a,b)=>a+b,0));
+  const maxTotal = Math.max(...yearTotals, 1);
+
+  const W = Math.max(280, years.length*46), H = 160, padB = 26, padT = 10, barGap = 14;
+  const barW = (W - barGap*(years.length+1)) / years.length;
+
+  const bars = years.map((y,i)=>{
+    const x = barGap + i*(barW+barGap);
+    let yCursor = H - padB;
+    const segments = continentsUsed.map(c=>{
+      const count = dataByYear[i][c];
+      if(!count) return '';
+      const segH = (count/maxTotal) * (H-padB-padT);
+      yCursor -= segH;
+      return `<rect x="${x.toFixed(1)}" y="${yCursor.toFixed(1)}" width="${barW.toFixed(1)}" height="${segH.toFixed(1)}" fill="${CONTINENT_COLORS[c]||'#999'}"><title>${y} — ${c}: ${count}</title></rect>`;
+    }).join('');
+    return segments + `<text x="${(x+barW/2).toFixed(1)}" y="${H-8}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`;
+  }).join('');
+
+  const legend = continentsUsed.map(c=>
+    `<span><span class="swatch" style="background:${CONTINENT_COLORS[c]||'#999'}"></span>${c}</span>`
+  ).join('');
+
+  document.getElementById(containerId).innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${bars}</svg>
+    <div class="chart-legend">${legend}</div>
+  `;
+}
+
+/* ---------------------------------------------------------------
    YEARLY WRAPPED
 --------------------------------------------------------------- */
 function populateWrappedYearSelect(){
@@ -2544,7 +2871,7 @@ function populateWrappedYearSelect(){
 function computeWrapped(year){
   const yearTrips = trips.filter(t => t.startDate.slice(0,4) === year);
   const countries = new Set(yearTrips.map(t=>t.country).filter(Boolean));
-  const continents = new Set(yearTrips.map(t=>t.continent).filter(Boolean));
+  const continents = new Set(yearTrips.map(t=>effectiveContinent(t)).filter(Boolean));
   const totalDays = yearTrips.reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate), 0);
 
   const companionCounts = {};
