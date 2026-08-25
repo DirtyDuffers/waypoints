@@ -10,6 +10,7 @@
 
 <!-- iOS home-screen icon and standalone-app behaviour -->
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Waypoints">
@@ -65,7 +66,7 @@
   .view.active{display:block;}
 
   /* --- Add trip button + form --- */
-  .add-bar{display:flex; justify-content:flex-end; margin-bottom:16px;}
+  .add-bar{display:flex; align-items:center; gap:10px; margin-bottom:16px;}
   #addTripBtn{
     background:var(--teal); color:#fff; border:none; padding:10px 18px;
     border-radius:24px; font-size:.95rem; font-weight:600; cursor:pointer;
@@ -165,7 +166,7 @@
   .bar-label{width:130px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .bar-track{flex:1; background:var(--paper-alt); border-radius:4px; height:14px; overflow:hidden;}
   .bar-fill{background:var(--teal); height:100%; border-radius:4px;}
-  .bar-count{font-family:'JetBrains Mono',monospace; width:26px; text-align:right; flex-shrink:0;}
+  .bar-count{font-family:'JetBrains Mono',monospace; min-width:26px; text-align:right; flex-shrink:0;}
 
   footer{text-align:center; font-size:.75rem; color:var(--ink-soft); padding:20px; opacity:.7;}
 
@@ -242,6 +243,79 @@
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
+
+  .undo-toast{
+    position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
+    background:var(--ink); color:var(--paper); padding:12px 16px; border-radius:10px;
+    display:flex; align-items:center; gap:16px; box-shadow:0 4px 16px rgba(0,0,0,.25); z-index:1000;
+    font-size:.88rem; max-width:90vw;
+  }
+  .undo-toast button{background:var(--gold); color:var(--ink); border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; flex-shrink:0;}
+
+  .group-card{
+    background:var(--paper-alt); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px 14px; margin-bottom:10px;
+  }
+  .group-card-header{display:flex; align-items:center; justify-content:space-between; cursor:pointer; gap:10px;}
+  .group-card-header h3{font-size:1rem; margin:0; display:flex; align-items:center; gap:6px;}
+  .group-card-meta{font-size:.8rem; color:var(--ink-soft);}
+  .group-card-body{margin-top:10px; padding-top:10px; border-top:1px dashed var(--line); display:none;}
+  .group-card-body.open{display:block;}
+  .group-card-body .trip-card{margin-bottom:8px;}
+  .group-toggle-icon{transition:transform .15s;}
+  .group-toggle-icon.open{transform:rotate(90deg);}
+
+  .overlap-warning{
+    background:#fff3e0; border:1px solid #ffcc80; color:#7a4a00; border-radius:8px;
+    padding:8px 12px; font-size:.8rem; margin-bottom:10px;
+  }
+
+  .otd-callout{
+    background:var(--card); border:2px dashed var(--gold); border-radius:var(--radius);
+    padding:14px 16px; margin-bottom:14px; text-align:center;
+  }
+  .otd-callout .otd-title{font-family:'Fraunces',serif; font-size:1.05rem; margin-bottom:4px;}
+
+  .badge-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:14px;}
+  .milestone-badge{
+    text-align:center; padding:10px 4px; border-radius:50%; aspect-ratio:1;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    border:2px dashed var(--line); opacity:.35; filter:grayscale(1);
+  }
+  .milestone-badge.earned{
+    opacity:1; filter:none; border-color:var(--gold); background:var(--card);
+  }
+  .milestone-badge .badge-icon{font-size:1.6rem; line-height:1;}
+  .milestone-badge .badge-label{font-size:.62rem; margin-top:4px; padding:0 4px; color:var(--ink-soft); line-height:1.2;}
+  .milestone-badge.earned .badge-label{color:var(--ink); font-weight:600;}
+
+  .wish-card{
+    background:var(--card); border:1px dashed var(--gold); border-radius:var(--radius);
+    padding:12px 14px; margin-bottom:10px; display:flex; gap:12px; align-items:flex-start;
+  }
+  .wish-card .wish-main{flex:1; min-width:0;}
+  .wish-card h3{font-size:1rem; margin:0 0 4px;}
+  .wish-card .wish-notes{font-size:.85rem; color:var(--ink-soft); margin-top:4px;}
+  .wish-actions{display:flex; flex-direction:column; gap:6px;}
+  .wish-actions button{font-size:.75rem; padding:5px 10px;}
+
+  .wrapped-overlay{
+    position:fixed; inset:0; background:rgba(28,43,58,.88);
+    display:none; align-items:center; justify-content:center; z-index:2000; padding:20px;
+  }
+  .wrapped-overlay.show{display:flex;}
+  .wrapped-card{
+    background:var(--paper); border-radius:18px; padding:30px 26px 24px; max-width:380px; width:100%;
+    text-align:center; position:relative; box-shadow:0 20px 60px rgba(0,0,0,.4);
+    border:3px dashed var(--gold);
+  }
+  .wrapped-close{position:absolute; top:10px; right:14px; background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--ink-soft);}
+  .wrapped-card h2{font-size:2rem; margin-bottom:2px;}
+  .wrapped-card .wrapped-tagline{color:var(--ink-soft); font-size:.85rem; margin-bottom:16px;}
+  .wrapped-stat-row{display:flex; justify-content:space-between; padding:9px 2px; border-bottom:1px dashed var(--line); font-size:.9rem; text-align:left;}
+  .wrapped-stat-row:last-child{border-bottom:none;}
+  .wrapped-stat-row .wrapped-label{color:var(--ink-soft);}
+  .wrapped-stat-row .wrapped-value{font-family:'JetBrains Mono',monospace; font-weight:700;}
 </style>
 </head>
 <body>
@@ -260,7 +334,11 @@
 
   <!-- TRIPS VIEW -->
   <section id="view-trips" class="view active">
+    <div style="text-align:right; margin-bottom:8px;">
+      <button class="link-btn" data-view="wishlist">✨ View wishlist</button>
+    </div>
     <div class="add-bar">
+      <input type="text" id="tripSearch" placeholder="🔍 Search by place, companion, or year…" style="flex:1; margin-right:10px;">
       <button id="addTripBtn">+ Log a trip</button>
     </div>
 
@@ -369,6 +447,27 @@
 
       <div class="form-row">
         <div class="form-field full">
+          <label>Part of a larger trip? 🔗</label>
+          <input type="text" id="fGroupName" list="groupNameOptions" placeholder="e.g. Belgium 2026 — leave blank if this is its own trip">
+          <datalist id="groupNameOptions"></datalist>
+          <div class="companion-empty-note" style="margin-top:4px;">Give two or more trips the same name here to group them together — like the Paris day trip during a longer stay in Belgium.</div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Tags 🏷️</label>
+          <input type="text" id="fTags" list="tagOptions" placeholder="e.g. beach, family, work — separate with commas">
+          <datalist id="tagOptions"></datalist>
+        </div>
+        <div class="form-field">
+          <label id="fCostLabel">Cost / budget</label>
+          <input type="number" step="any" min="0" id="fCost" placeholder="optional">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
           <div class="toggle-group">
             <div class="toggle-row">
               <label class="toggle-switch">
@@ -390,6 +489,20 @@
                 <span class="toggle-slider"></span>
               </label>
               <span class="toggle-label">🚗 Drove there</span>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="fIsTrain">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">🚆 Travelled by train</span>
+            </div>
+            <div class="toggle-row">
+              <label class="toggle-switch">
+                <input type="checkbox" id="fIsBoat">
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">🚤 Travelled by boat (not a cruise)</span>
             </div>
           </div>
         </div>
@@ -441,6 +554,9 @@
       </div>
     </div>
 
+    <div id="onThisDay"></div>
+    <div id="overlapWarnings"></div>
+
     <div class="section-title"><h2>Upcoming</h2><span class="count mono" id="upcomingCount"></span></div>
     <div id="upcomingList"></div>
 
@@ -457,12 +573,51 @@
       <span>🏠 Home</span>
       <span>✈️ ┈┈ Flight path</span>
       <span>🚢 Cruise route</span>
+      <span>✨ Wishlist</span>
     </div>
+  </section>
+
+  <!-- WISHLIST VIEW -->
+  <section id="view-wishlist" class="view">
+    <button class="back-link" data-view="trips">← Back to trips</button>
+    <div class="add-bar">
+      <h2 style="font-size:1.2rem; margin:0;">✨ Wishlist</h2>
+      <button id="addWishBtn">+ Add a place</button>
+    </div>
+    <p style="font-size:.85rem; color:var(--ink-soft); margin-top:-8px;">Places you want to go — shown as faded pins on the map. Turn one into a real trip once it's booked.</p>
+
+    <div class="panel" id="wishForm" style="display:none;">
+      <h3 style="font-size:1rem;">Add to wishlist</h3>
+      <div id="lpWish"></div>
+      <div class="form-row" style="margin-top:12px;">
+        <div class="form-field full">
+          <label>Notes</label>
+          <textarea id="wNotes" placeholder="Why you want to go, best time of year, etc."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-ghost" id="cancelWish" type="button">Cancel</button>
+        <button class="btn btn-teal" id="saveWish" type="button">Save to wishlist</button>
+      </div>
+    </div>
+
+    <div id="wishList"></div>
   </section>
 
   <!-- STATS VIEW -->
   <section id="view-stats" class="view">
     <div class="stat-grid" id="statGrid"></div>
+
+    <div class="breakdown">
+      <h3>🎖️ Milestones</h3>
+      <div class="badge-grid" id="milestoneBadges"></div>
+    </div>
+    <div class="breakdown" style="text-align:center;">
+      <h3>🎁 Year in review</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">A shareable recap of one year of travel.</p>
+      <select id="wrappedYearSelect" style="max-width:140px; margin-right:8px;"></select>
+      <button class="btn btn-teal" id="viewWrappedBtn" type="button">View recap</button>
+    </div>
     <div class="breakdown">
       <h3>🏆 Visits per place</h3>
       <div id="visitsBreakdown"></div>
@@ -478,6 +633,14 @@
     <div class="breakdown">
       <h3>🌍 By continent</h3>
       <div id="continentBreakdown"></div>
+    </div>
+    <div class="breakdown">
+      <h3>🏷️ By tag</h3>
+      <div id="tagBreakdown"></div>
+    </div>
+    <div class="breakdown">
+      <h3>💰 Spend per year</h3>
+      <div id="spendBreakdown"></div>
     </div>
   </section>
 
@@ -542,7 +705,14 @@
       <button class="btn btn-teal" data-view="settings">⚙️ Open settings</button>
     </div>
 
-    <div class="about-version">Waypoints v1.1.0 · by Duffers</div>
+    <div class="about-card" id="dataIntegrityCard" style="display:none;">
+      <h3>🔍 Data integrity check</h3>
+      <p>Scans your log for missing coordinates, zero/negative-length trips, and likely duplicate entries.</p>
+      <button class="btn btn-teal" id="runIntegrityCheckBtn" type="button">Run check</button>
+      <div id="integrityResults" style="margin-top:10px; font-size:.85rem;"></div>
+    </div>
+
+    <div class="about-version" id="aboutVersion" style="cursor:default;">Waypoints v1.2.0 · by Duffers</div>
   </section>
 
   <!-- SETTINGS VIEW -->
@@ -554,6 +724,22 @@
       <h3 style="font-size:.95rem;">🏠 Home / base location</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Used to work out how far each trip is from home, and to plot flight paths on the map.</p>
       <div id="lpHome"></div>
+    </div>
+
+    <div class="panel">
+      <h3 style="font-size:.95rem;">📏 Units</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Applies to distances like km-from-home, air miles, and drive miles. Cruises always show nautical miles.</p>
+      <div class="toggle-group" style="margin:0 0 14px;">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" id="fUnitMetric">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="unitToggleLabel">Miles (imperial)</span>
+        </div>
+      </div>
+      <label>Currency symbol (for trip costs)</label>
+      <input type="text" id="fCurrencySymbol" maxlength="3" style="max-width:80px;" placeholder="£">
     </div>
 
     <div class="panel">
@@ -593,6 +779,18 @@
 
 <footer>Stored locally in this browser · your data never leaves your device</footer>
 
+<div id="undoToast" class="undo-toast" style="display:none;">
+  <span id="undoToastText"></span>
+  <button id="undoToastBtn" type="button">Undo</button>
+</div>
+
+<div id="wrappedOverlay" class="wrapped-overlay">
+  <div class="wrapped-card">
+    <button class="wrapped-close" id="closeWrappedBtn" type="button">✕</button>
+    <div id="wrappedContent"></div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ---------------------------------------------------------------
@@ -624,6 +822,11 @@ function migrateTrip(t){
   if(typeof t.isDrive !== 'boolean') t.isDrive = false;
   if(!t.cruise) t.cruise = null;
   if(!t.customBase) t.customBase = null;
+  if(typeof t.isTrain !== 'boolean') t.isTrain = false;
+  if(typeof t.isBoat !== 'boolean') t.isBoat = false;
+  if(typeof t.groupName !== 'string') t.groupName = '';
+  if(!Array.isArray(t.tags)) t.tags = [];
+  if(typeof t.cost !== 'number' || isNaN(t.cost)) t.cost = null;
   if(typeof t.countryCode !== 'string') t.countryCode = '';
   return t;
 }
@@ -636,13 +839,30 @@ const SETTINGS_KEY = 'waypoints.settings.v1';
 function loadSettings(){
   try{
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
-    return { home: s.home || null, companions: Array.isArray(s.companions) ? s.companions : [] };
-  }catch(e){ return { home:null, companions:[] }; }
+    return {
+      home: s.home || null,
+      companions: Array.isArray(s.companions) ? s.companions : [],
+      unit: (s.unit === 'metric') ? 'metric' : 'imperial',
+      currencySymbol: (typeof s.currencySymbol === 'string' && s.currencySymbol) ? s.currencySymbol : '£'
+    };
+  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£' }; }
 }
 function saveSettings(s){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
 }
 let settings = loadSettings();
+
+/* ---------------------------------------------------------------
+   WISHLIST (places you want to go, not yet booked as a trip)
+--------------------------------------------------------------- */
+const WISHLIST_KEY = 'waypoints.wishlist.v1';
+function loadWishlist(){
+  try{ return JSON.parse(localStorage.getItem(WISHLIST_KEY)) || []; }catch(e){ return []; }
+}
+function saveWishlist(list){
+  localStorage.setItem(WISHLIST_KEY, JSON.stringify(list));
+}
+let wishlist = loadWishlist();
 
 /* ---------------------------------------------------------------
    DISTANCE (haversine, great-circle straight-line distance)
@@ -656,6 +876,17 @@ function haversineKm(lat1, lng1, lat2, lng2){
 }
 function kmToMiles(km){ return km * 0.621371; }
 function kmToNm(km){ return km * 0.539957; }
+
+/* Formats a km distance according to the user's unit preference (default
+   imperial/miles, since that's what "air miles" and "miles driven" assume).
+   Nautical miles for cruises are always nautical miles regardless of
+   preference, since that's the maritime convention. */
+function formatDistance(km){
+  if(settings.unit === 'metric'){
+    return Math.round(km).toLocaleString() + ' km';
+  }
+  return Math.round(kmToMiles(km)).toLocaleString() + ' mi';
+}
 
 /* ---------------------------------------------------------------
    FLAG EMOJI
@@ -935,6 +1166,7 @@ function switchView(name){
   if(name === 'map'){ initMapIfNeeded(); renderMap(); }
   if(name === 'stats'){ renderStats(); }
   if(name === 'settings'){ renderSettingsView(); }
+  if(name === 'wishlist'){ renderWishlist(); }
   window.scrollTo({top:0});
 }
 document.querySelectorAll('[data-view]').forEach(btn=>{
@@ -958,7 +1190,7 @@ document.getElementById('cancelForm').addEventListener('click', ()=>{
 });
 
 function clearForm(){
-  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes'].forEach(id=>{
+  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes','fGroupName','fTags','fCost'].forEach(id=>{
     document.getElementById(id).value = '';
   });
   document.getElementById('fContinent').value = '';
@@ -973,12 +1205,32 @@ function clearForm(){
   document.getElementById('fIsFlight').checked = false;
   document.getElementById('fIsCruise').checked = false;
   document.getElementById('fIsDrive').checked = false;
+  document.getElementById('fIsTrain').checked = false;
+  document.getElementById('fIsBoat').checked = false;
   document.getElementById('cruisePanel').style.display = 'none';
   clearCruisePorts();
   updateCruiseFlightVisibility();
   document.getElementById('fUseCustomBase').checked = false;
   document.getElementById('customBasePanel').style.display = 'none';
   customBasePicker.clear();
+  populateGroupNameOptions();
+  populateTagOptions();
+  updateCostLabel();
+}
+
+function populateGroupNameOptions(){
+  const names = [...new Set(trips.map(t=>t.groupName).filter(Boolean))].sort();
+  const datalist = document.getElementById('groupNameOptions');
+  datalist.innerHTML = names.map(n => `<option value="${escapeAttr(n)}">`).join('');
+}
+
+function populateTagOptions(){
+  const tags = [...new Set(trips.flatMap(t=>t.tags||[]))].sort();
+  document.getElementById('tagOptions').innerHTML = tags.map(t => `<option value="${escapeAttr(t)}">`).join('');
+}
+
+function updateCostLabel(){
+  document.getElementById('fCostLabel').textContent = `Cost / budget (${settings.currencySymbol})`;
 }
 
 /* ---------------------------------------------------------------
@@ -1131,6 +1383,8 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
   const isFlight = document.getElementById('fIsFlight').checked;
   const isCruise = document.getElementById('fIsCruise').checked;
   const isDrive = document.getElementById('fIsDrive').checked;
+  const isTrain = document.getElementById('fIsTrain').checked;
+  const isBoat = document.getElementById('fIsBoat').checked;
 
   const missing = [];
   if(!place) missing.push('display name');
@@ -1166,6 +1420,11 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     isFlight,
     isCruise,
     isDrive,
+    isTrain,
+    isBoat,
+    groupName: document.getElementById('fGroupName').value.trim(),
+    tags: document.getElementById('fTags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    cost: document.getElementById('fCost').value === '' ? null : parseFloat(document.getElementById('fCost').value),
     customBase: document.getElementById('fUseCustomBase').checked ? customBasePicker.getValue() : null,
     cruise: isCruise ? {
       startPort: startPortPicker.getValue(),
@@ -1197,8 +1456,16 @@ function renderSettingsView(){
   }else{
     homePicker.setValue(settings.home);
   }
+  document.getElementById('fUnitMetric').checked = settings.unit === 'metric';
+  updateUnitToggleLabel();
+  document.getElementById('fCurrencySymbol').value = settings.currencySymbol;
   renderCompanionChips();
 }
+function updateUnitToggleLabel(){
+  const isMetric = document.getElementById('fUnitMetric').checked;
+  document.getElementById('unitToggleLabel').textContent = isMetric ? 'Kilometres (metric)' : 'Miles (imperial)';
+}
+document.getElementById('fUnitMetric').addEventListener('change', updateUnitToggleLabel);
 function renderCompanionChips(){
   const container = document.getElementById('companionChips');
   container.innerHTML = '';
@@ -1236,7 +1503,10 @@ document.getElementById('newCompanionInput').addEventListener('keydown', e=>{
 });
 document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
   settings.home = homePicker.getValue();
+  settings.unit = document.getElementById('fUnitMetric').checked ? 'metric' : 'imperial';
+  settings.currencySymbol = document.getElementById('fCurrencySymbol').value.trim() || '£';
   saveSettings(settings);
+  renderTrips();
   const confirmEl = document.getElementById('settingsSaveConfirm');
   confirmEl.classList.add('show');
   setTimeout(()=> confirmEl.classList.remove('show'), 2000);
@@ -1286,8 +1556,13 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
     }
     const importedTrips = data.trips.map(migrateTrip);
     const importedSettings = data.settings && typeof data.settings === 'object'
-      ? { home: data.settings.home || null, companions: Array.isArray(data.settings.companions) ? data.settings.companions : [] }
-      : { home: null, companions: [] };
+      ? {
+          home: data.settings.home || null,
+          companions: Array.isArray(data.settings.companions) ? data.settings.companions : [],
+          unit: (data.settings.unit === 'metric') ? 'metric' : 'imperial',
+          currencySymbol: (typeof data.settings.currencySymbol === 'string' && data.settings.currencySymbol) ? data.settings.currencySymbol : '£'
+        }
+      : { home: null, companions: [], unit: 'imperial', currencySymbol: '£' };
 
     pendingImport = { trips: importedTrips, settings: importedSettings };
 
@@ -1348,6 +1623,170 @@ function finishImport(){
   document.getElementById('importActions').style.display = 'none';
   renderTrips();
 }
+
+/* ---------------------------------------------------------------
+   DATA INTEGRITY CHECK (hidden dev tool — tap the version number 5
+   times to reveal, same convention as the LFC Fixtures app)
+--------------------------------------------------------------- */
+let versionTapCount = 0;
+let versionTapTimer = null;
+document.getElementById('aboutVersion').addEventListener('click', ()=>{
+  versionTapCount++;
+  clearTimeout(versionTapTimer);
+  versionTapTimer = setTimeout(()=>{ versionTapCount = 0; }, 1500);
+  if(versionTapCount >= 5){
+    versionTapCount = 0;
+    document.getElementById('dataIntegrityCard').style.display = 'block';
+  }
+});
+
+function runDataIntegrityCheck(){
+  const issues = [];
+
+  trips.forEach(t=>{
+    if(typeof t.lat !== 'number' || typeof t.lng !== 'number' || isNaN(t.lat) || isNaN(t.lng)){
+      issues.push(`"${t.place}" (${t.startDate}) has missing or invalid coordinates.`);
+    }
+    if(t.endDate < t.startDate){
+      issues.push(`"${t.place}" (${t.startDate} → ${t.endDate}) ends before it starts.`);
+    }
+    if(t.isCruise && t.cruise){
+      if(!t.cruise.startPort || !t.cruise.endPort){
+        issues.push(`"${t.place}" is marked as a cruise but is missing a start or end port.`);
+      }
+    }
+  });
+
+  // Likely duplicates: same rounded place, overlapping dates, not part of the same group
+  for(let i=0; i<trips.length; i++){
+    for(let j=i+1; j<trips.length; j++){
+      const a = trips[i], b = trips[j];
+      if(a.groupName && a.groupName === b.groupName) continue;
+      if(placeKey(a) === placeKey(b) && rangesOverlap(a.startDate, a.endDate, b.startDate, b.endDate)){
+        issues.push(`Possible duplicate: "${a.place}" (${a.startDate}–${a.endDate}) and "${b.place}" (${b.startDate}–${b.endDate}) look like the same trip logged twice.`);
+      }
+    }
+  }
+
+  return issues;
+}
+
+document.getElementById('runIntegrityCheckBtn').addEventListener('click', ()=>{
+  const issues = runDataIntegrityCheck();
+  const resultsEl = document.getElementById('integrityResults');
+  if(!issues.length){
+    resultsEl.innerHTML = `<div style="color:var(--teal-dark);">✅ No issues found across ${trips.length} trip${trips.length!==1?'s':''}.</div>`;
+  }else{
+    resultsEl.innerHTML = `<div style="color:var(--rust); margin-bottom:6px;">⚠️ ${issues.length} issue${issues.length!==1?'s':''} found:</div>` +
+      '<ul style="margin:0; padding-left:20px;">' + issues.map(i=>`<li>${escapeHtml(i)}</li>`).join('') + '</ul>';
+  }
+  console.log('Waypoints data integrity check:', issues.length ? issues : 'no issues found');
+});
+
+/* ---------------------------------------------------------------
+   WISHLIST VIEW
+--------------------------------------------------------------- */
+let wishPicker = null;
+let editingWishId = null;
+
+document.getElementById('addWishBtn').addEventListener('click', ()=>{
+  editingWishId = null;
+  const form = document.getElementById('wishForm');
+  if(!wishPicker){
+    wishPicker = createLocationPicker(document.getElementById('lpWish'), 'Search for a place you want to visit');
+  }else{
+    wishPicker.clear();
+  }
+  document.getElementById('wNotes').value = '';
+  form.style.display = form.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('cancelWish').addEventListener('click', ()=>{
+  document.getElementById('wishForm').style.display = 'none';
+});
+document.getElementById('saveWish').addEventListener('click', ()=>{
+  const place = wishPicker.getValue();
+  if(!place){
+    alert('Search for a place and select it from the results first.');
+    return;
+  }
+  const item = {
+    id: editingWishId || uid(),
+    name: place.name, lat: place.lat, lng: place.lng,
+    country: place.country || '', countryCode: place.countryCode || '',
+    continent: guessContinent(place.country),
+    notes: document.getElementById('wNotes').value.trim()
+  };
+  if(editingWishId){
+    wishlist = wishlist.map(w => w.id === editingWishId ? item : w);
+  }else{
+    wishlist.push(item);
+  }
+  saveWishlist(wishlist);
+  editingWishId = null;
+  document.getElementById('wishForm').style.display = 'none';
+  renderWishlist();
+});
+
+function renderWishlist(){
+  const listEl = document.getElementById('wishList');
+  listEl.innerHTML = '';
+  if(!wishlist.length){
+    listEl.innerHTML = '<div class="empty-note">Nothing on your wishlist yet — add somewhere you\'d love to go.</div>';
+    return;
+  }
+  wishlist.forEach(w=>{
+    const flag = flagForTrip({ countryCode:w.countryCode, country:w.country });
+    const card = document.createElement('div');
+    card.className = 'wish-card';
+    card.innerHTML = `
+      <div class="wish-main">
+        <h3>${flag?flag+' ':''}${escapeHtml(w.name)}</h3>
+        ${w.country ? `<div style="font-size:.82rem; color:var(--ink-soft);">${escapeHtml(w.country)}</div>` : ''}
+        ${w.notes ? `<div class="wish-notes">${escapeHtml(w.notes)}</div>` : ''}
+      </div>
+      <div class="wish-actions">
+        <button class="btn btn-teal" data-wish-action="promote" data-id="${w.id}">✓ Booked it!</button>
+        <button class="btn btn-rust" data-wish-action="delete" data-id="${w.id}">Delete</button>
+      </div>
+    `;
+    listEl.appendChild(card);
+  });
+}
+
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-wish-action]');
+  if(!btn) return;
+  const id = btn.dataset.id;
+  const item = wishlist.find(w=>w.id===id);
+  if(!item) return;
+
+  if(btn.dataset.wishAction === 'delete'){
+    wishlist = wishlist.filter(w=>w.id!==id);
+    saveWishlist(wishlist);
+    renderWishlist();
+  }
+  if(btn.dataset.wishAction === 'promote'){
+    // Remove from wishlist and drop straight into the add-trip form,
+    // pre-filled with the place — dates are the only thing left to fill in.
+    wishlist = wishlist.filter(w=>w.id!==id);
+    saveWishlist(wishlist);
+    switchView('trips');
+    editingId = null;
+    clearForm();
+    document.getElementById('fPlace').value = item.name;
+    document.getElementById('fPlace').dataset.userEdited = '1';
+    document.getElementById('fLat').value = item.lat;
+    document.getElementById('fLng').value = item.lng;
+    document.getElementById('fCountry').value = item.country;
+    document.getElementById('fCountryCode').value = item.countryCode;
+    document.getElementById('fContinent').value = item.continent;
+    document.getElementById('fNotes').value = item.notes;
+    document.getElementById('formTitle').textContent = 'Log a trip';
+    document.getElementById('tripForm').style.display = 'block';
+    document.getElementById('tripForm').scrollIntoView({behavior:'smooth'});
+  }
+});
+
 function visitCounts(){
   const counts = {};
   trips.forEach(t=>{
@@ -1365,36 +1804,42 @@ function companionNames(trip){
 
 function tripDistances(trip){
   const home = trip.customBase || settings.home;
-  let fromHomeKm = null, airKm = 0, cruiseKm = 0, driveKm = 0;
+  let fromHomeKm = null, cruiseKm = 0;
   if(home){
     fromHomeKm = haversineKm(home.lat, home.lng, trip.lat, trip.lng);
   }
-  if(trip.isFlight){
+
+  // Shared pattern for any "how did you get there" mode: round trip from home
+  // to the destination, or — for a cruise — to/from the linked embarkation
+  // points (airport for flights, port for drive/train/boat) instead.
+  function modeKm(cruiseStart, cruiseEnd){
     if(trip.isCruise && trip.cruise){
-      if(home && trip.cruise.departureAirport) airKm += haversineKm(home.lat, home.lng, trip.cruise.departureAirport.lat, trip.cruise.departureAirport.lng);
-      if(home && trip.cruise.arrivalAirport) airKm += haversineKm(trip.cruise.arrivalAirport.lat, trip.cruise.arrivalAirport.lng, home.lat, home.lng);
+      let km = 0;
+      if(home && cruiseStart) km += haversineKm(home.lat, home.lng, cruiseStart.lat, cruiseStart.lng);
+      if(home && cruiseEnd) km += haversineKm(cruiseEnd.lat, cruiseEnd.lng, home.lat, home.lng);
+      return km;
     }else if(home){
-      airKm = 2 * haversineKm(home.lat, home.lng, trip.lat, trip.lng);
+      return 2 * haversineKm(home.lat, home.lng, trip.lat, trip.lng);
     }
+    return 0;
   }
-  if(trip.isDrive){
-    if(trip.isCruise && trip.cruise){
-      if(home && trip.cruise.startPort) driveKm += haversineKm(home.lat, home.lng, trip.cruise.startPort.lat, trip.cruise.startPort.lng);
-      if(home && trip.cruise.endPort) driveKm += haversineKm(trip.cruise.endPort.lat, trip.cruise.endPort.lng, home.lat, home.lng);
-    }else if(home){
-      driveKm = 2 * haversineKm(home.lat, home.lng, trip.lat, trip.lng);
-    }
-  }
+
+  const airKm = trip.isFlight ? modeKm(trip.cruise && trip.cruise.departureAirport, trip.cruise && trip.cruise.arrivalAirport) : 0;
+  const driveKm = trip.isDrive ? modeKm(trip.cruise && trip.cruise.startPort, trip.cruise && trip.cruise.endPort) : 0;
+  const trainKm = trip.isTrain ? modeKm(trip.cruise && trip.cruise.startPort, trip.cruise && trip.cruise.endPort) : 0;
+  const boatKm = trip.isBoat ? modeKm(trip.cruise && trip.cruise.startPort, trip.cruise && trip.cruise.endPort) : 0;
+
   if(trip.isCruise && trip.cruise && trip.cruise.startPort && trip.cruise.endPort){
     const chain = [trip.cruise.startPort, ...(trip.cruise.ports||[]), trip.cruise.endPort];
     for(let i=0; i<chain.length-1; i++){
       cruiseKm += haversineKm(chain[i].lat, chain[i].lng, chain[i+1].lat, chain[i+1].lng);
     }
   }
-  return { fromHomeKm, airKm, cruiseKm, driveKm };
+  return { fromHomeKm, airKm, cruiseKm, driveKm, trainKm, boatKm };
 }
 
-function tripCard(trip, counts){
+function tripCard(trip, counts, opts){
+  opts = opts || {};
   const upcoming = isUpcoming(trip);
   const count = counts[placeKey(trip)];
   const days = dayCount(trip.startDate, trip.endDate);
@@ -1405,6 +1850,8 @@ function tripCard(trip, counts){
   if(trip.isFlight) badges.push('✈️');
   if(trip.isCruise) badges.push('🚢');
   if(trip.isDrive) badges.push('🚗');
+  if(trip.isTrain) badges.push('🚆');
+  if(trip.isBoat) badges.push('🚤');
 
   const metaParts = [];
   metaParts.push(`<span class="mono">${trip.startDate} → ${trip.endDate}</span>`);
@@ -1413,11 +1860,16 @@ function tripCard(trip, counts){
   if(names.length) metaParts.push(`<span>with ${escapeHtml(names.join(', '))}</span>`);
   if(dist.fromHomeKm !== null){
     const baseLabel = trip.customBase ? `from ${escapeHtml(trip.customBase.name)}` : 'from home';
-    metaParts.push(`<span class="mono">${Math.round(dist.fromHomeKm).toLocaleString()} km ${baseLabel}</span>`);
+    metaParts.push(`<span class="mono">${formatDistance(dist.fromHomeKm)} ${baseLabel}</span>`);
   }
-  if(trip.isFlight && dist.airKm > 0) metaParts.push(`<span class="mono">✈️ ${Math.round(kmToMiles(dist.airKm)).toLocaleString()} mi</span>`);
+  if(trip.isFlight && dist.airKm > 0) metaParts.push(`<span class="mono">✈️ ${formatDistance(dist.airKm)}</span>`);
   if(trip.isCruise && dist.cruiseKm > 0) metaParts.push(`<span class="mono">🚢 ${Math.round(kmToNm(dist.cruiseKm)).toLocaleString()} nm</span>`);
-  if(trip.isDrive && dist.driveKm > 0) metaParts.push(`<span class="mono">🚗 ${Math.round(kmToMiles(dist.driveKm)).toLocaleString()} mi</span>`);
+  if(trip.isDrive && dist.driveKm > 0) metaParts.push(`<span class="mono">🚗 ${formatDistance(dist.driveKm)}</span>`);
+  if(trip.isTrain && dist.trainKm > 0) metaParts.push(`<span class="mono">🚆 ${formatDistance(dist.trainKm)}</span>`);
+  if(trip.isBoat && dist.boatKm > 0) metaParts.push(`<span class="mono">🚤 ${formatDistance(dist.boatKm)}</span>`);
+  if(trip.groupName && !opts.hideGroupBadge) metaParts.push(`<span>🔗 ${escapeHtml(trip.groupName)}</span>`);
+  if(trip.tags && trip.tags.length) metaParts.push(`<span>${trip.tags.map(t=>'🏷️ '+escapeHtml(t)).join(' ')}</span>`);
+  if(trip.cost !== null && trip.cost !== undefined) metaParts.push(`<span class="mono">${escapeHtml(settings.currencySymbol)}${trip.cost.toLocaleString()}</span>`);
 
   const div = document.createElement('div');
   div.className = 'trip-card ' + (upcoming ? 'upcoming' : 'past');
@@ -1429,6 +1881,7 @@ function tripCard(trip, counts){
     </div>
     <div class="trip-actions">
       <button class="btn btn-ghost" data-action="edit" data-id="${trip.id}">Edit</button>
+      <button class="btn btn-ghost" data-action="duplicate" data-id="${trip.id}">Duplicate</button>
       <button class="btn btn-rust" data-action="delete" data-id="${trip.id}">Delete</button>
     </div>
   `;
@@ -1441,81 +1894,259 @@ function escapeHtml(s){
   return d.innerHTML;
 }
 
+let searchQuery = '';
+document.getElementById('tripSearch').addEventListener('input', e=>{
+  searchQuery = e.target.value.trim().toLowerCase();
+  renderTrips();
+});
+
+function matchesSearch(trip, query){
+  if(!query) return true;
+  const haystack = [
+    trip.place, trip.country, trip.notes, trip.groupName, trip.companionsOther,
+    ...(trip.companions||[]), ...(trip.tags||[]), trip.startDate.slice(0,4), trip.endDate.slice(0,4)
+  ].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(query);
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd){
+  return aStart <= bEnd && bStart <= aEnd;
+}
+
+function computeOverlaps(){
+  const pairs = [];
+  for(let i=0; i<trips.length; i++){
+    for(let j=i+1; j<trips.length; j++){
+      const a = trips[i], b = trips[j];
+      if(a.groupName && a.groupName === b.groupName) continue; // grouped trips are meant to overlap
+      if(rangesOverlap(a.startDate, a.endDate, b.startDate, b.endDate)){
+        pairs.push([a, b]);
+      }
+    }
+  }
+  return pairs;
+}
+
+const expandedGroups = new Set();
+
+function groupCard(groupName, groupTrips, counts){
+  const sorted = [...groupTrips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const minStart = sorted[0].startDate;
+  const maxEnd = sorted.reduce((m,t)=> t.endDate > m ? t.endDate : m, sorted[0].endDate);
+  const totalDays = dayCount(minStart, maxEnd);
+  const isOpen = expandedGroups.has(groupName);
+
+  const card = document.createElement('div');
+  card.className = 'group-card';
+  card.innerHTML = `
+    <div class="group-card-header">
+      <h3><span class="group-toggle-icon${isOpen?' open':''}">▶</span> 🔗 ${escapeHtml(groupName)}</h3>
+      <div class="group-card-meta">${groupTrips.length} trips · ${minStart} → ${maxEnd} · ${totalDays} days</div>
+    </div>
+    <div class="group-card-body${isOpen?' open':''}"></div>
+  `;
+  const body = card.querySelector('.group-card-body');
+  sorted.forEach(t => body.appendChild(tripCard(t, counts, { hideGroupBadge:true })));
+
+  card.querySelector('.group-card-header').addEventListener('click', ()=>{
+    const nowOpen = body.classList.toggle('open');
+    card.querySelector('.group-toggle-icon').classList.toggle('open', nowOpen);
+    if(nowOpen) expandedGroups.add(groupName); else expandedGroups.delete(groupName);
+  });
+  return card;
+}
+
 function renderTrips(){
   const counts = visitCounts();
-  const upcoming = trips.filter(isUpcoming).sort((a,b)=>a.startDate.localeCompare(b.startDate));
-  const past = trips.filter(t=>!isUpcoming(t)).sort((a,b)=>b.startDate.localeCompare(a.startDate));
+  const filtered = trips.filter(t => matchesSearch(t, searchQuery));
+
+  // Bucket into standalone trips vs named groups (a group needs 2+ members
+  // surviving the current filter to render as a group; a lone survivor from a
+  // group just renders as a normal card, still tagged with its group name).
+  const byGroup = {};
+  filtered.forEach(t=>{
+    if(t.groupName){
+      (byGroup[t.groupName] = byGroup[t.groupName] || []).push(t);
+    }
+  });
+
+  const items = []; // { sortKey, endKey, render() }
+  const consumedGroups = new Set();
+  filtered.forEach(t=>{
+    if(t.groupName && byGroup[t.groupName].length > 1){
+      if(consumedGroups.has(t.groupName)) return;
+      consumedGroups.add(t.groupName);
+      const groupTrips = byGroup[t.groupName];
+      const minStart = groupTrips.reduce((m,x)=> x.startDate < m ? x.startDate : m, groupTrips[0].startDate);
+      const maxEnd = groupTrips.reduce((m,x)=> x.endDate > m ? x.endDate : m, groupTrips[0].endDate);
+      items.push({
+        sortKey: minStart, endKey: maxEnd,
+        render: ()=> groupCard(t.groupName, groupTrips, counts)
+      });
+    }else{
+      items.push({ sortKey: t.startDate, endKey: t.endDate, render: ()=> tripCard(t, counts) });
+    }
+  });
+
+  const upcomingItems = items.filter(i => i.endKey >= todayStr()).sort((a,b)=>a.sortKey.localeCompare(b.sortKey));
+  const pastItems = items.filter(i => i.endKey < todayStr()).sort((a,b)=>b.sortKey.localeCompare(a.sortKey));
 
   const upcomingList = document.getElementById('upcomingList');
   const pastList = document.getElementById('pastList');
   upcomingList.innerHTML = '';
   pastList.innerHTML = '';
 
-  document.getElementById('upcomingCount').textContent = upcoming.length;
-  document.getElementById('pastCount').textContent = past.length;
+  document.getElementById('upcomingCount').textContent = upcomingItems.length;
+  document.getElementById('pastCount').textContent = pastItems.length;
 
-  if(!upcoming.length){
-    upcomingList.innerHTML = '<div class="empty-note">Nothing booked yet. Log a future trip above.</div>';
+  if(!upcomingItems.length){
+    upcomingList.innerHTML = `<div class="empty-note">${searchQuery ? 'No upcoming trips match your search.' : 'Nothing booked yet. Log a future trip above.'}</div>`;
   }else{
-    upcoming.forEach(t => upcomingList.appendChild(tripCard(t, counts)));
+    upcomingItems.forEach(i => upcomingList.appendChild(i.render()));
   }
-  if(!past.length){
-    pastList.innerHTML = '<div class="empty-note">No past trips logged yet.</div>';
+  if(!pastItems.length){
+    pastList.innerHTML = `<div class="empty-note">${searchQuery ? 'No past trips match your search.' : 'No past trips logged yet.'}</div>`;
   }else{
-    past.forEach(t => pastList.appendChild(tripCard(t, counts)));
+    pastItems.forEach(i => pastList.appendChild(i.render()));
   }
+
+  // Overlap warnings (advisory only — dates can legitimately clash for reasons
+  // the app can't know about, so this never blocks saving).
+  const overlapEl = document.getElementById('overlapWarnings');
+  const overlaps = computeOverlaps();
+  if(overlaps.length){
+    overlapEl.innerHTML = `<div class="overlap-warning">⚠️ ${overlaps.length} overlapping trip${overlaps.length!==1?'s':''}: ` +
+      overlaps.map(([a,b])=> `${escapeHtml(a.place)} (${a.startDate}–${a.endDate}) &amp; ${escapeHtml(b.place)} (${b.startDate}–${b.endDate})`).join(', ') +
+      `. If this is intentional (e.g. a side trip), give them the same "part of a larger trip" name to group them instead.</div>`;
+  }else{
+    overlapEl.innerHTML = '';
+  }
+
+  renderOnThisDay();
+}
+
+function renderOnThisDay(){
+  const el = document.getElementById('onThisDay');
+  const todayMD = todayStr().slice(5); // 'MM-DD'
+  const thisYear = parseInt(todayStr().slice(0,4), 10);
+
+  const matches = trips.filter(t=>{
+    if(isUpcoming(t)) return false; // only look back, not forward
+    return t.startDate.slice(5) === todayMD && parseInt(t.startDate.slice(0,4),10) < thisYear;
+  });
+
+  if(!matches.length){ el.innerHTML = ''; return; }
+
+  const lines = matches.map(t=>{
+    const years = thisYear - parseInt(t.startDate.slice(0,4),10);
+    const flag = flagForTrip(t);
+    const names = companionNames(t);
+    const withPart = names.length ? ` with ${escapeHtml(names.join(', '))}` : '';
+    return `${years} year${years!==1?'s':''} ago today, you set off for ${flag?flag+' ':''}${escapeHtml(t.place)}${withPart}.`;
+  });
+
+  el.innerHTML = `<div class="otd-callout"><div class="otd-title">📆 On this day</div>${lines.map(l=>`<div>${l}</div>`).join('')}</div>`;
+}
+
+function openEditForm(t){
+  editingId = t.id;
+  document.getElementById('fPlace').value = t.place;
+  document.getElementById('fPlace').dataset.userEdited = '1';
+  document.getElementById('fLat').value = t.lat;
+  document.getElementById('fLng').value = t.lng;
+  document.getElementById('fCountry').value = t.country;
+  document.getElementById('fCountryCode').value = t.countryCode || '';
+  document.getElementById('fContinent').value = t.continent;
+  startDS.setValue(t.startDate);
+  endDS.setValue(t.endDate);
+  endDS.el.dataset.userEdited = '1'; // preserve existing end date; don't auto-overwrite on edit
+  renderCompanionCheckboxes(t.companions || []);
+  document.getElementById('fCompanionsOther').value = t.companionsOther || '';
+  document.getElementById('fNotes').value = t.notes;
+
+  document.getElementById('fIsFlight').checked = !!t.isFlight;
+  document.getElementById('fIsDrive').checked = !!t.isDrive;
+  document.getElementById('fIsTrain').checked = !!t.isTrain;
+  document.getElementById('fIsBoat').checked = !!t.isBoat;
+  document.getElementById('fIsCruise').checked = !!t.isCruise;
+  document.getElementById('cruisePanel').style.display = t.isCruise ? 'block' : 'none';
+  clearCruisePorts();
+  if(t.isCruise && t.cruise){
+    startPortPicker.setValue(t.cruise.startPort || null);
+    endPortPicker.setValue(t.cruise.endPort || null);
+    (t.cruise.ports || []).forEach(p => addBetweenPortRow(p));
+    departureAirportPicker.setValue(t.cruise.departureAirport || null);
+    arrivalAirportPicker.setValue(t.cruise.arrivalAirport || null);
+  }
+  updateCruiseFlightVisibility();
+
+  document.getElementById('fUseCustomBase').checked = !!t.customBase;
+  document.getElementById('customBasePanel').style.display = t.customBase ? 'block' : 'none';
+  customBasePicker.setValue(t.customBase || null);
+  populateGroupNameOptions();
+  document.getElementById('fGroupName').value = t.groupName || '';
+  populateTagOptions();
+  document.getElementById('fTags').value = (t.tags || []).join(', ');
+  updateCostLabel();
+  document.getElementById('fCost').value = (t.cost === null || t.cost === undefined) ? '' : t.cost;
+
+  document.getElementById('formTitle').textContent = editingId ? 'Edit trip' : 'Log a trip';
+  form.style.display = 'block';
+  form.scrollIntoView({behavior:'smooth'});
+}
+
+function showUndoToast(message, onUndo){
+  const toast = document.getElementById('undoToast');
+  document.getElementById('undoToastText').textContent = message;
+  toast.style.display = 'flex';
+  let undone = false;
+  const undoBtn = document.getElementById('undoToastBtn');
+  const handler = ()=>{
+    undone = true;
+    onUndo();
+    hide();
+  };
+  function hide(){
+    toast.style.display = 'none';
+    undoBtn.removeEventListener('click', handler);
+  }
+  undoBtn.addEventListener('click', handler);
+  setTimeout(()=>{ if(!undone) hide(); }, 6000);
 }
 
 document.addEventListener('click', e=>{
   const btn = e.target.closest('button[data-action]');
   if(!btn) return;
   const id = btn.dataset.id;
+
   if(btn.dataset.action === 'delete'){
-    if(confirm('Delete this trip?')){
-      trips = trips.filter(t=>t.id !== id);
+    const deletedTrip = trips.find(t=>t.id === id);
+    if(!deletedTrip) return;
+    trips = trips.filter(t=>t.id !== id);
+    saveTrips(trips);
+    renderTrips();
+    showUndoToast(`Deleted "${deletedTrip.place}"`, ()=>{
+      trips.push(deletedTrip);
       saveTrips(trips);
       renderTrips();
-    }
+    });
   }
+
+  if(btn.dataset.action === 'duplicate'){
+    const original = trips.find(t=>t.id === id);
+    if(!original) return;
+    const copy = JSON.parse(JSON.stringify(original));
+    copy.id = uid();
+    trips.push(copy);
+    saveTrips(trips);
+    renderTrips();
+    openEditForm(copy); // land straight in edit mode — dates are the most likely thing to change
+  }
+
   if(btn.dataset.action === 'edit'){
     const t = trips.find(t=>t.id === id);
     if(!t) return;
-    editingId = id;
-    document.getElementById('fPlace').value = t.place;
-    document.getElementById('fPlace').dataset.userEdited = '1';
-    document.getElementById('fLat').value = t.lat;
-    document.getElementById('fLng').value = t.lng;
-    document.getElementById('fCountry').value = t.country;
-    document.getElementById('fCountryCode').value = t.countryCode || '';
-    document.getElementById('fContinent').value = t.continent;
-    startDS.setValue(t.startDate);
-    endDS.setValue(t.endDate);
-    endDS.el.dataset.userEdited = '1'; // preserve existing end date; don't auto-overwrite on edit
-    renderCompanionCheckboxes(t.companions || []);
-    document.getElementById('fCompanionsOther').value = t.companionsOther || '';
-    document.getElementById('fNotes').value = t.notes;
-
-    document.getElementById('fIsFlight').checked = !!t.isFlight;
-    document.getElementById('fIsDrive').checked = !!t.isDrive;
-    document.getElementById('fIsCruise').checked = !!t.isCruise;
-    document.getElementById('cruisePanel').style.display = t.isCruise ? 'block' : 'none';
-    clearCruisePorts();
-    if(t.isCruise && t.cruise){
-      startPortPicker.setValue(t.cruise.startPort || null);
-      endPortPicker.setValue(t.cruise.endPort || null);
-      (t.cruise.ports || []).forEach(p => addBetweenPortRow(p));
-      departureAirportPicker.setValue(t.cruise.departureAirport || null);
-      arrivalAirportPicker.setValue(t.cruise.arrivalAirport || null);
-    }
-    updateCruiseFlightVisibility();
-
-    document.getElementById('fUseCustomBase').checked = !!t.customBase;
-    document.getElementById('customBasePanel').style.display = t.customBase ? 'block' : 'none';
-    customBasePicker.setValue(t.customBase || null);
-
-    document.getElementById('formTitle').textContent = 'Edit trip';
-    form.style.display = 'block';
-    form.scrollIntoView({behavior:'smooth'});
+    openEditForm(t);
   }
 });
 
@@ -1538,7 +2169,6 @@ function initMapIfNeeded(){
 function renderMap(){
   if(!map) return;
   markerLayer.clearLayers();
-  if(!trips.length) return;
 
   const bounds = [];
   const home = settings.home;
@@ -1551,6 +2181,15 @@ function renderMap(){
     homeMarker.addTo(markerLayer);
     bounds.push([home.lat, home.lng]);
   }
+
+  wishlist.forEach(w=>{
+    const wishMarker = L.circleMarker([w.lat, w.lng], {
+      radius: 7, color:'#9c9c9c', weight:2, dashArray:'2,3', fillColor:'#d8d8d8', fillOpacity:0.6
+    });
+    wishMarker.bindPopup(`✨ <strong>${escapeHtml(w.name)}</strong>${w.country ? '<br>'+escapeHtml(w.country) : ''}<br><em>Wishlist</em>`);
+    wishMarker.addTo(markerLayer);
+    bounds.push([w.lat, w.lng]);
+  });
 
   // flight paths: dashed line from home to the flown-to airport(s) / destination
   trips.forEach(t=>{
@@ -1644,14 +2283,18 @@ function renderStats(){
   const flightsCount = trips.filter(t=>t.isFlight).length;
   const cruisesCount = trips.filter(t=>t.isCruise).length;
   const drivesCount = trips.filter(t=>t.isDrive).length;
+  const trainsCount = trips.filter(t=>t.isTrain).length;
+  const boatsCount = trips.filter(t=>t.isBoat).length;
 
-  let totalHomeKm = 0, totalAirKm = 0, totalCruiseKm = 0, totalDriveKm = 0;
+  let totalHomeKm = 0, totalAirKm = 0, totalCruiseKm = 0, totalDriveKm = 0, totalTrainKm = 0, totalBoatKm = 0;
   trips.forEach(t=>{
     const d = tripDistances(t);
     if(d.fromHomeKm !== null) totalHomeKm += d.fromHomeKm;
     totalAirKm += d.airKm;
     totalCruiseKm += d.cruiseKm;
     totalDriveKm += d.driveKm;
+    totalTrainKm += d.trainKm;
+    totalBoatKm += d.boatKm;
   });
 
   const stats = [
@@ -1661,12 +2304,17 @@ function renderStats(){
     { num: continents.size + ' / 7', label:'🌍 Continents' },
     { num: totalDays, label:'📆 Days travelled' },
   ];
+  function distStat(totalKm){
+    return settings.unit === 'metric' ? Math.round(totalKm) : Math.round(kmToMiles(totalKm));
+  }
+  const unitWord = settings.unit === 'metric' ? 'km' : 'miles';
+
   if(settings.home){
-    stats.push({ num: Math.round(totalHomeKm).toLocaleString(), label:'🏠 km from home (total)' });
+    stats.push({ num: distStat(totalHomeKm).toLocaleString(), label:`🏠 ${unitWord} from home (total)` });
   }
   if(flightsCount){
     stats.push({ num: flightsCount, label:'✈️ Flights taken' });
-    if(totalAirKm > 0) stats.push({ num: Math.round(kmToMiles(totalAirKm)).toLocaleString(), label:'✈️ Air miles' });
+    if(totalAirKm > 0) stats.push({ num: distStat(totalAirKm).toLocaleString(), label:`✈️ Air ${unitWord}` });
   }
   if(cruisesCount){
     stats.push({ num: cruisesCount, label:'🚢 Cruises taken' });
@@ -1674,12 +2322,25 @@ function renderStats(){
   }
   if(drivesCount){
     stats.push({ num: drivesCount, label:'🚗 Road trips' });
-    if(totalDriveKm > 0) stats.push({ num: Math.round(kmToMiles(totalDriveKm)).toLocaleString(), label:'🚗 Miles driven' });
+    if(totalDriveKm > 0) stats.push({ num: distStat(totalDriveKm).toLocaleString(), label:`🚗 ${unitWord} driven` });
+  }
+  if(trainsCount){
+    stats.push({ num: trainsCount, label:'🚆 Train journeys' });
+    if(totalTrainKm > 0) stats.push({ num: distStat(totalTrainKm).toLocaleString(), label:`🚆 ${unitWord} by train` });
+  }
+  if(boatsCount){
+    stats.push({ num: boatsCount, label:'🚤 Boat trips' });
+    if(totalBoatKm > 0) stats.push({ num: distStat(totalBoatKm).toLocaleString(), label:`🚤 ${unitWord} by boat` });
+  }
+  const tripsWithCost = trips.filter(t => t.cost !== null && t.cost !== undefined);
+  if(tripsWithCost.length){
+    const totalSpend = tripsWithCost.reduce((sum,t)=>sum+t.cost, 0);
+    stats.push({ num: settings.currencySymbol + Math.round(totalSpend).toLocaleString(), label:'💰 Total spend' });
   }
 
   // Air miles and drive miles both need a home location to measure from — flag
   // this clearly rather than have those stats just silently not appear.
-  const needsHomeHint = !settings.home && (flightsCount > 0 || drivesCount > 0 || trips.length > 0);
+  const needsHomeHint = !settings.home && (flightsCount > 0 || drivesCount > 0 || trainsCount > 0 || boatsCount > 0 || trips.length > 0);
   const hintEl = document.getElementById('statsHomeHint');
   if(hintEl) hintEl.remove();
   if(needsHomeHint){
@@ -1688,7 +2349,7 @@ function renderStats(){
     hint.className = 'breakdown';
     hint.style.cssText = 'text-align:center; border-style:dashed;';
     hint.innerHTML = `
-      <div style="font-size:.88rem; margin-bottom:8px;">🏠 Set your home location to see km-from-home, air miles, and miles driven.</div>
+      <div style="font-size:.88rem; margin-bottom:8px;">🏠 Set your home location to see km-from-home, air/drive/train/boat miles.</div>
       <button class="btn btn-teal" data-view="settings">⚙️ Open settings</button>
     `;
     grid.parentNode.insertBefore(hint, grid.nextSibling);
@@ -1760,16 +2421,155 @@ function renderStats(){
   sortedCont.forEach(([c,n])=>{
     contEl.appendChild(barRow(c, n, maxCont));
   });
+
+  // by tag
+  const tagCounts = {};
+  trips.forEach(t=>{
+    (t.tags||[]).forEach(tag=>{
+      tagCounts[tag] = (tagCounts[tag]||0)+1;
+    });
+  });
+  const sortedTags = Object.entries(tagCounts).sort((a,b)=>b[1]-a[1]);
+  const maxTag = sortedTags.length ? sortedTags[0][1] : 1;
+  const tagEl = document.getElementById('tagBreakdown');
+  tagEl.innerHTML = sortedTags.length ? '' : '<div class="empty-note">Add tags to your trips to see this breakdown.</div>';
+  sortedTags.forEach(([tag,c])=>{
+    tagEl.appendChild(barRow(tag, c, maxTag));
+  });
+
+  // spend per year
+  const spendByYear = {};
+  trips.forEach(t=>{
+    if(t.cost === null || t.cost === undefined) return;
+    const y = t.startDate.slice(0,4);
+    spendByYear[y] = (spendByYear[y]||0) + t.cost;
+  });
+  const sortedSpend = Object.entries(spendByYear).sort((a,b)=>a[0].localeCompare(b[0]));
+  const maxSpend = sortedSpend.length ? Math.max(...sortedSpend.map(s=>s[1])) : 1;
+  const spendEl = document.getElementById('spendBreakdown');
+  spendEl.innerHTML = sortedSpend.length ? '' : '<div class="empty-note">Add a cost to your trips to see yearly spend.</div>';
+  sortedSpend.forEach(([y,total])=>{
+    spendEl.appendChild(barRow(y, Math.round(total), maxSpend, settings.currencySymbol));
+  });
+
+  renderMilestones({
+    tripsCount: trips.length, uniquePlaces, countriesCount: countries.size, continentsCount: continents.size,
+    totalDays, flightsCount, cruisesCount, drivesCount, trainsCount, boatsCount
+  });
+  populateWrappedYearSelect();
 }
 
-function barRow(label, count, max){
+const MILESTONES = [
+  { icon:'🧳', label:'First trip', test: s => s.tripsCount >= 1 },
+  { icon:'🧳', label:'10 trips', test: s => s.tripsCount >= 10 },
+  { icon:'🧳', label:'25 trips', test: s => s.tripsCount >= 25 },
+  { icon:'🧳', label:'50 trips', test: s => s.tripsCount >= 50 },
+  { icon:'📍', label:'10 places', test: s => s.uniquePlaces >= 10 },
+  { icon:'📍', label:'25 places', test: s => s.uniquePlaces >= 25 },
+  { icon:'🌐', label:'5 countries', test: s => s.countriesCount >= 5 },
+  { icon:'🌐', label:'10 countries', test: s => s.countriesCount >= 10 },
+  { icon:'🌐', label:'25 countries', test: s => s.countriesCount >= 25 },
+  { icon:'🌍', label:'3 continents', test: s => s.continentsCount >= 3 },
+  { icon:'🌍', label:'All 7 continents', test: s => s.continentsCount >= 7 },
+  { icon:'📆', label:'30 days travelled', test: s => s.totalDays >= 30 },
+  { icon:'📆', label:'100 days travelled', test: s => s.totalDays >= 100 },
+  { icon:'📆', label:'365 days travelled', test: s => s.totalDays >= 365 },
+  { icon:'✈️', label:'First flight', test: s => s.flightsCount >= 1 },
+  { icon:'✈️', label:'10 flights', test: s => s.flightsCount >= 10 },
+  { icon:'🚢', label:'First cruise', test: s => s.cruisesCount >= 1 },
+  { icon:'🚗', label:'First road trip', test: s => s.drivesCount >= 1 },
+  { icon:'🚆', label:'First train journey', test: s => s.trainsCount >= 1 },
+  { icon:'🚤', label:'First boat trip', test: s => s.boatsCount >= 1 },
+];
+
+function renderMilestones(s){
+  const el = document.getElementById('milestoneBadges');
+  el.innerHTML = '';
+  MILESTONES.forEach(m=>{
+    const earned = m.test(s);
+    const badge = document.createElement('div');
+    badge.className = 'milestone-badge' + (earned ? ' earned' : '');
+    badge.innerHTML = `<div class="badge-icon">${m.icon}</div><div class="badge-label">${escapeHtml(m.label)}</div>`;
+    el.appendChild(badge);
+  });
+}
+
+/* ---------------------------------------------------------------
+   YEARLY WRAPPED
+--------------------------------------------------------------- */
+function populateWrappedYearSelect(){
+  const sel = document.getElementById('wrappedYearSelect');
+  const years = [...new Set(trips.map(t=>t.startDate.slice(0,4)))].sort((a,b)=>b.localeCompare(a));
+  const currentSelection = sel.value;
+  sel.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(years.includes(currentSelection)){
+    sel.value = currentSelection;
+  }
+}
+
+function computeWrapped(year){
+  const yearTrips = trips.filter(t => t.startDate.slice(0,4) === year);
+  const countries = new Set(yearTrips.map(t=>t.country).filter(Boolean));
+  const continents = new Set(yearTrips.map(t=>t.continent).filter(Boolean));
+  const totalDays = yearTrips.reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate), 0);
+
+  const companionCounts = {};
+  yearTrips.forEach(t=> (t.companions||[]).forEach(name=>{
+    companionCounts[name] = (companionCounts[name]||0)+1;
+  }));
+  const topCompanion = Object.entries(companionCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  const longest = yearTrips.reduce((best,t)=>{
+    const d = dayCount(t.startDate,t.endDate);
+    return (!best || d > best.days) ? { place:t.place, days:d } : best;
+  }, null);
+
+  const spend = yearTrips.filter(t=>t.cost!==null && t.cost!==undefined).reduce((s,t)=>s+t.cost,0);
+
+  return { year, tripsCount: yearTrips.length, countries, continents, totalDays, topCompanion, longest, spend };
+}
+
+function renderWrappedCard(year){
+  const w = computeWrapped(year);
+  const rows = [
+    ['🧳 Trips', w.tripsCount],
+    ['🌐 Countries', w.countries.size],
+    ['🌍 Continents', w.continents.size],
+    ['📆 Days travelled', w.totalDays],
+  ];
+  if(w.topCompanion) rows.push(['👥 Travelled with most', `${escapeHtml(w.topCompanion[0])} (${w.topCompanion[1]} trips)`]);
+  if(w.longest) rows.push(['🏆 Longest trip', `${escapeHtml(w.longest.place)} (${w.longest.days} days)`]);
+  if(w.spend > 0) rows.push(['💰 Spent', `${escapeHtml(settings.currencySymbol)}${Math.round(w.spend).toLocaleString()}`]);
+
+  document.getElementById('wrappedContent').innerHTML = `
+    <h2>${year}</h2>
+    <div class="wrapped-tagline">Your year in travel</div>
+    ${rows.map(([label,value])=>`<div class="wrapped-stat-row"><span class="wrapped-label">${label}</span><span class="wrapped-value">${value}</span></div>`).join('')}
+  `;
+}
+
+document.getElementById('viewWrappedBtn').addEventListener('click', ()=>{
+  const year = document.getElementById('wrappedYearSelect').value;
+  if(!year) return;
+  renderWrappedCard(year);
+  document.getElementById('wrappedOverlay').classList.add('show');
+});
+document.getElementById('closeWrappedBtn').addEventListener('click', ()=>{
+  document.getElementById('wrappedOverlay').classList.remove('show');
+});
+document.getElementById('wrappedOverlay').addEventListener('click', e=>{
+  if(e.target.id === 'wrappedOverlay') document.getElementById('wrappedOverlay').classList.remove('show');
+});
+
+function barRow(label, count, max, prefix){
   const row = document.createElement('div');
   row.className = 'bar-row';
   const pct = Math.max(6, Math.round((count/max)*100));
+  const display = (prefix ? prefix : '') + count.toLocaleString();
   row.innerHTML = `
     <div class="bar-label" title="${escapeHtml(label)}">${escapeHtml(label)}</div>
     <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-    <div class="bar-count mono">${count}</div>
+    <div class="bar-count mono">${display}</div>
   `;
   return row;
 }
@@ -1778,6 +2578,16 @@ function barRow(label, count, max){
    INIT
 --------------------------------------------------------------- */
 renderTrips();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{
+      // Fine if this fails (e.g. opened directly as a local file) — the
+      // app still works normally, just without offline caching.
+    });
+  });
+}
+
 </script>
 </body>
 </html>
