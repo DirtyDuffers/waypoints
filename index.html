@@ -510,6 +510,17 @@
 
       <div class="sub-panel" id="cruisePanel" style="display:none;">
         <h4>Cruise details</h4>
+        <div class="form-row" style="margin-bottom:10px;">
+          <div class="form-field">
+            <label>Cruise line 🚢</label>
+            <input type="text" id="fCruiseLine" list="cruiseLineOptions" placeholder="e.g. MSC, Royal Caribbean">
+            <datalist id="cruiseLineOptions"></datalist>
+          </div>
+          <div class="form-field">
+            <label>Ship name</label>
+            <input type="text" id="fShipName" placeholder="e.g. Divina">
+          </div>
+        </div>
         <div class="port-row">
           <div class="lp-wrap">
             <label>Start port</label>
@@ -821,6 +832,10 @@ function migrateTrip(t){
   if(typeof t.isCruise !== 'boolean') t.isCruise = false;
   if(typeof t.isDrive !== 'boolean') t.isDrive = false;
   if(!t.cruise) t.cruise = null;
+  if(t.cruise){
+    if(typeof t.cruise.cruiseLine !== 'string') t.cruise.cruiseLine = '';
+    if(typeof t.cruise.shipName !== 'string') t.cruise.shipName = '';
+  }
   if(!t.customBase) t.customBase = null;
   if(typeof t.isTrain !== 'boolean') t.isTrain = false;
   if(typeof t.isBoat !== 'boolean') t.isBoat = false;
@@ -1190,7 +1205,7 @@ document.getElementById('cancelForm').addEventListener('click', ()=>{
 });
 
 function clearForm(){
-  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes','fGroupName','fTags','fCost'].forEach(id=>{
+  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes','fGroupName','fTags','fCost','fCruiseLine','fShipName'].forEach(id=>{
     document.getElementById(id).value = '';
   });
   document.getElementById('fContinent').value = '';
@@ -1215,6 +1230,7 @@ function clearForm(){
   customBasePicker.clear();
   populateGroupNameOptions();
   populateTagOptions();
+  populateCruiseLineOptions();
   updateCostLabel();
 }
 
@@ -1227,6 +1243,11 @@ function populateGroupNameOptions(){
 function populateTagOptions(){
   const tags = [...new Set(trips.flatMap(t=>t.tags||[]))].sort();
   document.getElementById('tagOptions').innerHTML = tags.map(t => `<option value="${escapeAttr(t)}">`).join('');
+}
+
+function populateCruiseLineOptions(){
+  const lines = [...new Set(trips.filter(t=>t.cruise && t.cruise.cruiseLine).map(t=>t.cruise.cruiseLine))].sort();
+  document.getElementById('cruiseLineOptions').innerHTML = lines.map(l => `<option value="${escapeAttr(l)}">`).join('');
 }
 
 function updateCostLabel(){
@@ -1427,6 +1448,8 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     cost: document.getElementById('fCost').value === '' ? null : parseFloat(document.getElementById('fCost').value),
     customBase: document.getElementById('fUseCustomBase').checked ? customBasePicker.getValue() : null,
     cruise: isCruise ? {
+      cruiseLine: document.getElementById('fCruiseLine').value.trim(),
+      shipName: document.getElementById('fShipName').value.trim(),
       startPort: startPortPicker.getValue(),
       endPort: endPortPicker.getValue(),
       ports: betweenPorts.map(p => p.picker.getValue()).filter(Boolean),
@@ -1864,6 +1887,10 @@ function tripCard(trip, counts, opts){
   }
   if(trip.isFlight && dist.airKm > 0) metaParts.push(`<span class="mono">✈️ ${formatDistance(dist.airKm)}</span>`);
   if(trip.isCruise && dist.cruiseKm > 0) metaParts.push(`<span class="mono">🚢 ${Math.round(kmToNm(dist.cruiseKm)).toLocaleString()} nm</span>`);
+  if(trip.isCruise && trip.cruise && (trip.cruise.cruiseLine || trip.cruise.shipName)){
+    const shipBits = [trip.cruise.cruiseLine, trip.cruise.shipName].filter(Boolean).join(' — ');
+    metaParts.push(`<span>🚢 ${escapeHtml(shipBits)}</span>`);
+  }
   if(trip.isDrive && dist.driveKm > 0) metaParts.push(`<span class="mono">🚗 ${formatDistance(dist.driveKm)}</span>`);
   if(trip.isTrain && dist.trainKm > 0) metaParts.push(`<span class="mono">🚆 ${formatDistance(dist.trainKm)}</span>`);
   if(trip.isBoat && dist.boatKm > 0) metaParts.push(`<span class="mono">🚤 ${formatDistance(dist.boatKm)}</span>`);
@@ -1904,7 +1931,8 @@ function matchesSearch(trip, query){
   if(!query) return true;
   const haystack = [
     trip.place, trip.country, trip.notes, trip.groupName, trip.companionsOther,
-    ...(trip.companions||[]), ...(trip.tags||[]), trip.startDate.slice(0,4), trip.endDate.slice(0,4)
+    ...(trip.companions||[]), ...(trip.tags||[]), trip.startDate.slice(0,4), trip.endDate.slice(0,4),
+    trip.cruise && trip.cruise.cruiseLine, trip.cruise && trip.cruise.shipName
   ].filter(Boolean).join(' ').toLowerCase();
   return haystack.includes(query);
 }
@@ -2071,12 +2099,18 @@ function openEditForm(t){
   document.getElementById('fIsCruise').checked = !!t.isCruise;
   document.getElementById('cruisePanel').style.display = t.isCruise ? 'block' : 'none';
   clearCruisePorts();
+  populateCruiseLineOptions();
   if(t.isCruise && t.cruise){
+    document.getElementById('fCruiseLine').value = t.cruise.cruiseLine || '';
+    document.getElementById('fShipName').value = t.cruise.shipName || '';
     startPortPicker.setValue(t.cruise.startPort || null);
     endPortPicker.setValue(t.cruise.endPort || null);
     (t.cruise.ports || []).forEach(p => addBetweenPortRow(p));
     departureAirportPicker.setValue(t.cruise.departureAirport || null);
     arrivalAirportPicker.setValue(t.cruise.arrivalAirport || null);
+  }else{
+    document.getElementById('fCruiseLine').value = '';
+    document.getElementById('fShipName').value = '';
   }
   updateCruiseFlightVisibility();
 
