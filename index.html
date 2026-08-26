@@ -990,8 +990,17 @@ function dayCount(start, end){
   return Math.round((b - a) / 86400000) + 1;
 }
 function placeKey(trip){
-  // group "same place" by rounded coordinates so re-visits count correctly
-  return Math.round(trip.lat*100)/100 + ',' + Math.round(trip.lng*100)/100;
+  // Group "same place" by the name and country you gave it, not raw GPS
+  // proximity. Coordinate rounding used to do this, but two searches for the
+  // same city (e.g. "Paris") can legitimately return points a mile or two
+  // apart — city centre vs. a specific address — which fell into different
+  // rounding buckets and silently split one place into two. Matching on
+  // name+country matches how a person actually thinks of "have I been here
+  // before", and still keeps genuinely different places (e.g. two different
+  // neighbourhoods you named separately) apart, since their names differ.
+  const name = (trip.place || '').trim().toLowerCase();
+  const country = (trip.country || '').trim().toLowerCase();
+  return name + '|' + country;
 }
 
 /* Minimal country -> continent lookup. Extend as needed. */
@@ -1766,7 +1775,7 @@ function runDataIntegrityCheck(){
     }
   });
 
-  // Likely duplicates: same rounded place, overlapping dates, not part of the same group
+  // Likely duplicates: same place name+country, overlapping dates, not part of the same group
   for(let i=0; i<trips.length; i++){
     for(let j=i+1; j<trips.length; j++){
       const a = trips[i], b = trips[j];
