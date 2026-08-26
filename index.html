@@ -307,6 +307,33 @@
   .chart-legend span{display:inline-flex; align-items:center; gap:5px;}
   .chart-legend .swatch{width:10px; height:10px; border-radius:2px; display:inline-block;}
 
+  .continent-section{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    margin-bottom:10px; overflow:hidden;
+  }
+  .continent-header{
+    display:flex; align-items:center; justify-content:space-between; padding:14px 16px; cursor:pointer;
+  }
+  .continent-header h3{font-size:1rem; margin:0; display:flex; align-items:center; gap:8px;}
+  .continent-header .continent-progress{font-size:.8rem; color:var(--ink-soft); font-family:'JetBrains Mono',monospace;}
+  .continent-toggle-icon{transition:transform .15s; display:inline-block;}
+  .continent-toggle-icon.open{transform:rotate(90deg);}
+  .continent-body{display:none; padding:0 16px 16px;}
+  .continent-body.open{display:block;}
+  .continent-progress-bar{background:var(--paper-alt); border-radius:4px; height:6px; overflow:hidden; margin:0 16px 12px;}
+  .continent-progress-fill{background:var(--teal); height:100%;}
+  .country-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px;}
+  .country-chip{
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+    padding:8px 10px; border-radius:8px; font-size:.83rem; border:1px dashed var(--line);
+    opacity:.4; filter:grayscale(1);
+  }
+  .country-chip.visited{
+    opacity:1; filter:none; background:var(--teal); color:#fff; border:1px solid var(--teal-dark);
+  }
+  .country-chip .country-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .country-chip .country-count{font-family:'JetBrains Mono',monospace; font-weight:700; flex-shrink:0;}
+
   .wrapped-overlay{
     position:fixed; inset:0; background:rgba(28,43,58,.88);
     display:none; align-items:center; justify-content:center; z-index:2000; padding:20px;
@@ -625,6 +652,9 @@
 
   <!-- STATS VIEW -->
   <section id="view-stats" class="view">
+    <div style="text-align:right; margin-bottom:8px;">
+      <button class="link-btn" data-view="countries">🌍 Country checklist</button>
+    </div>
     <div class="stat-grid" id="statGrid"></div>
 
     <div class="breakdown">
@@ -682,6 +712,16 @@
       <h3>💰 Spend per year</h3>
       <div id="spendBreakdown"></div>
     </div>
+  </section>
+
+  <!-- COUNTRIES VIEW -->
+  <section id="view-countries" class="view">
+    <button class="back-link" data-view="stats">← Back to Stats</button>
+    <div class="about-hero" style="padding-top:4px;">
+      <h2 style="font-size:1.3rem;">🌍 Country Checklist</h2>
+      <div class="tagline" id="countriesSummary"></div>
+    </div>
+    <div id="continentAccordion"></div>
   </section>
 
   <!-- ABOUT VIEW -->
@@ -1039,6 +1079,16 @@ const CONTINENT_BY_CODE = {
   aq:"Antarctica"
 };
 
+const COUNTRY_LIST = {
+  "Europe": [["gb","United Kingdom"],["ie","Ireland"],["fr","France"],["de","Germany"],["es","Spain"],["it","Italy"],["pt","Portugal"],["nl","Netherlands"],["be","Belgium"],["ch","Switzerland"],["at","Austria"],["gr","Greece"],["pl","Poland"],["cz","Czechia"],["hu","Hungary"],["se","Sweden"],["no","Norway"],["dk","Denmark"],["fi","Finland"],["is","Iceland"],["hr","Croatia"],["si","Slovenia"],["sk","Slovakia"],["ro","Romania"],["bg","Bulgaria"],["rs","Serbia"],["me","Montenegro"],["ba","Bosnia and Herzegovina"],["al","Albania"],["mk","North Macedonia"],["ee","Estonia"],["lv","Latvia"],["lt","Lithuania"],["mt","Malta"],["cy","Cyprus"],["lu","Luxembourg"],["mc","Monaco"],["ua","Ukraine"],["md","Moldova"],["by","Belarus"],["ru","Russia"],["sm","San Marino"],["ad","Andorra"],["li","Liechtenstein"],["va","Vatican City"],["xk","Kosovo"]],
+  "North America": [["us","United States"],["ca","Canada"],["mx","Mexico"],["cu","Cuba"],["jm","Jamaica"],["bs","Bahamas"],["cr","Costa Rica"],["pa","Panama"],["gt","Guatemala"],["bz","Belize"],["hn","Honduras"],["ni","Nicaragua"],["sv","El Salvador"],["do","Dominican Republic"],["ht","Haiti"],["tt","Trinidad and Tobago"],["bb","Barbados"],["ag","Antigua and Barbuda"],["dm","Dominica"],["gd","Grenada"],["kn","Saint Kitts and Nevis"],["lc","Saint Lucia"],["vc","Saint Vincent and the Grenadines"]],
+  "South America": [["br","Brazil"],["ar","Argentina"],["cl","Chile"],["pe","Peru"],["co","Colombia"],["ec","Ecuador"],["bo","Bolivia"],["uy","Uruguay"],["py","Paraguay"],["ve","Venezuela"],["gy","Guyana"],["sr","Suriname"]],
+  "Asia": [["jp","Japan"],["cn","China"],["kr","South Korea"],["kp","North Korea"],["in","India"],["th","Thailand"],["vn","Vietnam"],["id","Indonesia"],["my","Malaysia"],["sg","Singapore"],["ph","Philippines"],["kh","Cambodia"],["la","Laos"],["mm","Myanmar"],["np","Nepal"],["lk","Sri Lanka"],["bd","Bangladesh"],["pk","Pakistan"],["ae","United Arab Emirates"],["qa","Qatar"],["sa","Saudi Arabia"],["il","Israel"],["ps","Palestine"],["jo","Jordan"],["lb","Lebanon"],["tr","Türkiye"],["ge","Georgia"],["am","Armenia"],["az","Azerbaijan"],["kz","Kazakhstan"],["uz","Uzbekistan"],["tm","Turkmenistan"],["tj","Tajikistan"],["kg","Kyrgyzstan"],["mn","Mongolia"],["tw","Taiwan"],["hk","Hong Kong"],["mo","Macau"],["om","Oman"],["kw","Kuwait"],["bh","Bahrain"],["iq","Iraq"],["ir","Iran"],["af","Afghanistan"],["sy","Syria"],["ye","Yemen"],["bt","Bhutan"],["mv","Maldives"],["bn","Brunei"],["tl","Timor-Leste"]],
+  "Africa": [["eg","Egypt"],["ma","Morocco"],["tn","Tunisia"],["dz","Algeria"],["ly","Libya"],["za","South Africa"],["ke","Kenya"],["tz","Tanzania"],["ug","Uganda"],["et","Ethiopia"],["gh","Ghana"],["ng","Nigeria"],["sn","Senegal"],["na","Namibia"],["bw","Botswana"],["zw","Zimbabwe"],["zm","Zambia"],["mz","Mozambique"],["rw","Rwanda"],["mu","Mauritius"],["sc","Seychelles"],["mg","Madagascar"],["cv","Cape Verde"],["gm","Gambia"],["gn","Guinea"],["gw","Guinea-Bissau"],["sl","Sierra Leone"],["lr","Liberia"],["ci","Ivory Coast"],["tg","Togo"],["bj","Benin"],["ne","Niger"],["bf","Burkina Faso"],["ml","Mali"],["td","Chad"],["cf","Central African Republic"],["cg","Republic of the Congo"],["cd","Democratic Republic of the Congo"],["ga","Gabon"],["gq","Equatorial Guinea"],["st","Sao Tome and Principe"],["km","Comoros"],["dj","Djibouti"],["er","Eritrea"],["so","Somalia"],["sd","Sudan"],["ss","South Sudan"],["ao","Angola"],["mw","Malawi"],["bi","Burundi"],["ls","Lesotho"],["sz","Eswatini"]],
+  "Oceania": [["au","Australia"],["nz","New Zealand"],["fj","Fiji"],["pg","Papua New Guinea"],["ws","Samoa"],["to","Tonga"],["vu","Vanuatu"],["fm","Micronesia"],["pw","Palau"],["mh","Marshall Islands"],["ki","Kiribati"],["nr","Nauru"],["tv","Tuvalu"],["sb","Solomon Islands"]],
+  "Antarctica": [["aq","Antarctica"]]
+};
+
 const CONTINENT_MAP = {
   "united kingdom":"Europe","england":"Europe","scotland":"Europe","wales":"Europe","northern ireland":"Europe",
   "ireland":"Europe","france":"Europe","germany":"Europe","spain":"Europe","italy":"Europe","portugal":"Europe",
@@ -1266,6 +1316,7 @@ function switchView(name){
   if(name === 'stats'){ renderStats(); }
   if(name === 'settings'){ renderSettingsView(); }
   if(name === 'wishlist'){ renderWishlist(); }
+  if(name === 'countries'){ renderCountryChecklist(); }
   window.scrollTo({top:0});
 }
 document.querySelectorAll('[data-view]').forEach(btn=>{
@@ -1889,6 +1940,78 @@ function renderWishlist(){
       </div>
     `;
     listEl.appendChild(card);
+  });
+}
+
+/* ---------------------------------------------------------------
+   COUNTRY CHECKLIST
+--------------------------------------------------------------- */
+const expandedContinents = new Set();
+
+function countryVisitCounts(){
+  // Build a name->code lookup once from COUNTRY_LIST, for the rare trip
+  // that has a country name but no stored country code (older/manual entries).
+  const nameToCode = {};
+  Object.values(COUNTRY_LIST).forEach(list=>{
+    list.forEach(([code,name])=> nameToCode[name.toLowerCase()] = code);
+  });
+
+  const counts = {};
+  trips.forEach(t=>{
+    let code = (t.countryCode || '').trim().toLowerCase();
+    if(!code && t.country){
+      code = nameToCode[t.country.trim().toLowerCase()] || '';
+    }
+    if(!code) return;
+    counts[code] = (counts[code] || 0) + 1;
+  });
+  return counts;
+}
+
+function renderCountryChecklist(){
+  const counts = countryVisitCounts();
+  const totalCountries = Object.values(COUNTRY_LIST).reduce((sum,list)=>sum+list.length, 0);
+  const visitedCount = Object.values(COUNTRY_LIST)
+    .reduce((sum,list)=> sum + list.filter(([code])=>counts[code]>0).length, 0);
+
+  document.getElementById('countriesSummary').textContent =
+    `${visitedCount} of ${totalCountries} countries visited (${Math.round(visitedCount/totalCountries*100)}%)`;
+
+  const accordion = document.getElementById('continentAccordion');
+  accordion.innerHTML = '';
+
+  Object.entries(COUNTRY_LIST).forEach(([continent, list])=>{
+    const visited = list.filter(([code])=>counts[code]>0).length;
+    const isOpen = expandedContinents.has(continent);
+
+    const section = document.createElement('div');
+    section.className = 'continent-section';
+    section.innerHTML = `
+      <div class="continent-header">
+        <h3><span class="continent-toggle-icon${isOpen?' open':''}">▶</span> ${escapeHtml(continent)}</h3>
+        <span class="continent-progress">${visited} / ${list.length}</span>
+      </div>
+      <div class="continent-progress-bar"><div class="continent-progress-fill" style="width:${Math.round(visited/list.length*100)}%"></div></div>
+      <div class="continent-body${isOpen?' open':''}">
+        <div class="country-grid">
+          ${list.map(([code,name])=>{
+            const count = counts[code] || 0;
+            const flag = flagFromIso2(code);
+            return `<div class="country-chip${count>0?' visited':''}">
+              <span class="country-name">${flag} ${escapeHtml(name)}</span>
+              ${count>0 ? `<span class="country-count">×${count}</span>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    section.querySelector('.continent-header').addEventListener('click', ()=>{
+      const body = section.querySelector('.continent-body');
+      const nowOpen = body.classList.toggle('open');
+      section.querySelector('.continent-toggle-icon').classList.toggle('open', nowOpen);
+      if(nowOpen) expandedContinents.add(continent); else expandedContinents.delete(continent);
+    });
+    accordion.appendChild(section);
   });
 }
 
