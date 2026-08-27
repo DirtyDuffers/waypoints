@@ -1054,6 +1054,19 @@
     </div>
 
     <div class="panel">
+      <h3 style="font-size:.95rem;">🎒 Packing list templates</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Save a starter checklist (e.g. "Beach trip" or "Winter trip") to apply to a trip's packing list in one click, instead of typing every item from scratch.</p>
+      <div class="search-row">
+        <input type="text" id="newPackingTemplateName" placeholder="Template name, e.g. Beach trip">
+      </div>
+      <div class="search-row" style="margin-top:8px;">
+        <input type="text" id="newPackingTemplateItems" placeholder="Items, comma separated: sunscreen, swimsuit, flip flops">
+        <button class="btn btn-teal" id="addPackingTemplateBtn" type="button">Save</button>
+      </div>
+      <div class="settings-chip-row" id="packingTemplateChips" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel">
       <h3 style="font-size:.95rem;">👥 Travel companions</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Add the people you usually travel with, so you can pick them from a list when logging a trip.</p>
       <div class="search-row">
@@ -1091,6 +1104,8 @@
 </main>
 
 <footer>Stored locally in this browser · your data never leaves your device</footer>
+
+<datalist id="packingItemOptions"></datalist>
 
 <div id="undoToast" class="undo-toast" style="display:none;">
   <span id="undoToastText"></span>
@@ -1204,6 +1219,25 @@ function saveTemplates(list){
   localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
 }
 let templates = loadTemplates();
+
+/* ---------------------------------------------------------------
+   PACKING LIST TEMPLATES (starter checklists you can apply to a trip)
+--------------------------------------------------------------- */
+const PACKING_TEMPLATES_KEY = 'waypoints.packingTemplates.v1';
+function loadPackingTemplates(){
+  try{ return JSON.parse(localStorage.getItem(PACKING_TEMPLATES_KEY)) || []; }catch(e){ return []; }
+}
+function savePackingTemplates(list){
+  localStorage.setItem(PACKING_TEMPLATES_KEY, JSON.stringify(list));
+}
+let packingTemplates = loadPackingTemplates();
+
+function populatePackingItemOptions(){
+  const items = new Set();
+  trips.forEach(t => (t.packing||[]).forEach(p => items.add(p.text)));
+  document.getElementById('packingItemOptions').innerHTML =
+    [...items].sort().map(text => `<option value="${escapeAttr(text)}">`).join('');
+}
 
 /* ---------------------------------------------------------------
    DISTANCE (haversine, great-circle straight-line distance)
@@ -1710,6 +1744,67 @@ function renderTemplateChips(){
   });
 }
 
+function renderPackingTemplateChips(){
+  const container = document.getElementById('packingTemplateChips');
+  if(!container) return;
+  container.innerHTML = '';
+  if(!packingTemplates.length){
+    container.innerHTML = '<div class="companion-empty-note">No packing templates saved yet.</div>';
+    return;
+  }
+  packingTemplates.forEach((pt, idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'settings-chip';
+    chip.title = pt.items.join(', ');
+    chip.innerHTML = `<span>${escapeHtml(pt.name)} (${pt.items.length})</span><button type="button" aria-label="Remove packing template ${escapeAttr(pt.name)}">✕</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      packingTemplates.splice(idx, 1);
+      savePackingTemplates(packingTemplates);
+      renderPackingTemplateChips();
+      renderTrips(); // trip cards show the template dropdown, needs refreshing
+    });
+    container.appendChild(chip);
+  });
+}
+document.getElementById('addPackingTemplateBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('newPackingTemplateName').value.trim();
+  const itemsRaw = document.getElementById('newPackingTemplateItems').value;
+  const items = itemsRaw.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!name || !items.length){
+    alert('Give the template a name and at least one item.');
+    return;
+  }
+  packingTemplates.push({ id: uid(), name, items });
+  savePackingTemplates(packingTemplates);
+  document.getElementById('newPackingTemplateName').value = '';
+  document.getElementById('newPackingTemplateItems').value = '';
+  renderPackingTemplateChips();
+  renderTrips();
+});
+
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-action="apply-packing-template"]');
+  if(!btn) return;
+  const tripId = btn.dataset.tripId;
+  const select = document.querySelector(`.packing-template-select[data-trip-id="${tripId}"]`);
+  if(!select || !select.value) return;
+  const pt = packingTemplates.find(p => p.id === select.value);
+  if(!pt) return;
+  const t = trips.find(t => t.id === tripId);
+  if(!t) return;
+  if(!Array.isArray(t.packing)) t.packing = [];
+  const existingTexts = new Set(t.packing.map(p => p.text.toLowerCase()));
+  pt.items.forEach(text=>{
+    if(!existingTexts.has(text.toLowerCase())){
+      t.packing.push({ id: uid(), text, checked: false });
+      existingTexts.add(text.toLowerCase());
+    }
+  });
+  saveTrips(trips);
+  expandedPacking.add(tripId);
+  renderTrips();
+});
+
 function populateCruiseLineOptions(){
   const lines = [...new Set(trips.filter(t=>t.cruise && t.cruise.cruiseLine).map(t=>t.cruise.cruiseLine))].sort();
   document.getElementById('cruiseLineOptions').innerHTML = lines.map(l => `<option value="${escapeAttr(l)}">`).join('');
@@ -1986,6 +2081,7 @@ function renderSettingsView(){
   document.getElementById('remindersToggleLabel').textContent = settings.remindersEnabled ? 'On' : 'Off';
   renderCompanionChips();
   renderTemplateChips();
+  renderPackingTemplateChips();
 }
 function updateUnitToggleLabel(){
   const isMetric = document.getElementById('fUnitMetric').checked;
@@ -2617,6 +2713,15 @@ function tripCard(trip, counts, opts){
       ${trip.notes ? `<div class="trip-notes">${escapeHtml(trip.notes)}</div>` : ''}
       <div class="packing-toggle" data-action="toggle-packing" data-trip-id="${trip.id}">🎒 Packing list ${packing.length ? `(${packedCount}/${packing.length})` : ''}</div>
       <div class="packing-panel" style="display:${packingExpanded?'block':'none'};">
+        ${packingTemplates.length ? `
+          <div class="search-row" style="margin-bottom:10px;">
+            <select class="packing-template-select" data-trip-id="${trip.id}">
+              <option value="">Apply a template…</option>
+              ${packingTemplates.map(pt => `<option value="${escapeAttr(pt.id)}">${escapeHtml(pt.name)} (${pt.items.length})</option>`).join('')}
+            </select>
+            <button class="btn btn-ghost" data-action="apply-packing-template" data-trip-id="${trip.id}" type="button">Apply</button>
+          </div>
+        ` : ''}
         ${packing.map(item => `
           <div class="packing-item">
             <input type="checkbox" data-action="toggle-packing-item" data-trip-id="${trip.id}" data-packing-id="${item.id}" ${item.checked?'checked':''}>
@@ -2625,7 +2730,7 @@ function tripCard(trip, counts, opts){
           </div>
         `).join('')}
         <div class="packing-add-row">
-          <input type="text" class="packing-new-input" data-trip-id="${trip.id}" placeholder="Add item…">
+          <input type="text" class="packing-new-input" list="packingItemOptions" data-trip-id="${trip.id}" placeholder="Add item…">
           <button class="btn btn-ghost" data-action="add-packing-item" data-trip-id="${trip.id}" type="button">+ Add</button>
         </div>
       </div>
@@ -2959,6 +3064,7 @@ function groupCard(groupName, groupTrips, counts){
 }
 
 function renderTrips(){
+  populatePackingItemOptions();
   const counts = visitCounts();
   const filtered = trips.filter(t => matchesSearch(t, searchQuery) && matchesQuickFilters(t) && matchesDateRange(t));
 
