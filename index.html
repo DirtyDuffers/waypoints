@@ -8,7 +8,11 @@
   (function(){
     try{
       var s = JSON.parse(localStorage.getItem('waypoints.settings.v1'));
-      if(s && s.darkMode) document.documentElement.dataset.theme = 'dark';
+      var pref = (s && (s.themePreference === 'light' || s.themePreference === 'dark' || s.themePreference === 'system'))
+        ? s.themePreference
+        : (s && s.darkMode === true ? 'dark' : 'system');
+      var isDark = pref === 'dark' || (pref === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if(isDark) document.documentElement.dataset.theme = 'dark';
     }catch(e){}
   })();
 </script>
@@ -86,6 +90,12 @@
   }
   nav.tabs button:hover{opacity:.9;}
   nav.tabs button.active{opacity:1; background:rgba(255,255,255,0.12);}
+  .header-right{display:flex; align-items:center; gap:2px;}
+  .theme-toggle-header{
+    background:none; border:none; color:#f6f1e4; font-size:1.05rem; cursor:pointer;
+    padding:6px 8px; border-radius:50%; opacity:.85; line-height:1;
+  }
+  .theme-toggle-header:hover{opacity:1; background:rgba(255,255,255,0.12);}
 
   main{max-width:920px; margin:0 auto; padding:20px 16px 80px;}
   .view{display:none;}
@@ -160,6 +170,16 @@
     width:60px; height:60px; border-radius:8px; object-fit:cover; flex-shrink:0;
     border:1px solid var(--line); background:var(--paper-alt);
   }
+  .trip-thumb-polaroid{
+    width:64px; height:64px; flex-shrink:0; background:#fff; box-sizing:border-box;
+    padding:3px 3px 10px 3px; box-shadow:0 3px 6px rgba(0,0,0,.28); transform:rotate(-3deg);
+  }
+  .trip-thumb-polaroid img{width:100%; height:100%; object-fit:cover; display:block;}
+  .photo-preview-polaroid{
+    display:inline-block; background:#fff; padding:8px 8px 24px 8px;
+    box-shadow:0 4px 12px rgba(0,0,0,.28); transform:rotate(-2deg);
+  }
+  .photo-preview-polaroid img{display:block; width:140px; height:140px; object-fit:cover;}
   .trip-main{flex:1; min-width:0;}
   .trip-main h3{font-size:1.05rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .stamp{
@@ -283,6 +303,7 @@
     header.top{padding:12px 14px;}
     header.top h1{font-size:1.05rem;}
     nav.tabs button{padding:7px 10px; font-size:.85rem;}
+    .theme-toggle-header{padding:5px 6px; font-size:.95rem;}
     .trip-card{flex-direction:column;}
     .trip-actions{flex-direction:row;}
   }
@@ -468,13 +489,16 @@
 <body>
 
 <header class="top">
-  <h1><img src="data:image/png;base64,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" alt=""><span>Waypoints</span></h1>
-  <nav class="tabs">
-    <button data-view="trips" class="active">Trips</button>
-    <button data-view="map">Map</button>
-    <button data-view="stats">Stats</button>
-    <button data-view="about">About</button>
-  </nav>
+  <button class="logo-home-btn" id="logoHomeBtn" type="button" aria-label="Go to Trips"><h1><img src="data:image/png;base64,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" alt=""><span>Waypoints</span></h1></button>
+  <div class="header-right">
+    <nav class="tabs">
+      <button data-view="trips" class="active">Trips</button>
+      <button data-view="map">Map</button>
+      <button data-view="stats">Stats</button>
+      <button data-view="about">About</button>
+    </nav>
+    <button id="headerThemeToggle" class="theme-toggle-header" type="button" aria-label="Toggle dark mode" title="Toggle dark mode">🌙</button>
+  </div>
 </header>
 
 <main>
@@ -640,9 +664,9 @@
         <div class="form-field full">
           <label>Cover photo 📷</label>
           <input type="file" id="fPhotoInput" accept="image/*">
-          <div id="photoPreviewWrap" style="display:none; margin-top:8px;">
-            <img id="photoPreview" style="max-width:140px; max-height:140px; border-radius:8px; border:1px solid var(--line); display:block;">
-            <button type="button" class="btn btn-ghost" id="removePhotoBtn" style="margin-top:6px;">Remove photo</button>
+          <div id="photoPreviewWrap" style="display:none; margin-top:10px;">
+            <div class="photo-preview-polaroid"><img id="photoPreview"></div>
+            <button type="button" class="btn btn-ghost" id="removePhotoBtn" style="margin-top:10px; display:block;">Remove photo</button>
           </div>
         </div>
       </div>
@@ -1107,14 +1131,11 @@
 
     <div class="panel">
       <h3 style="font-size:.95rem;">🎨 Appearance</h3>
-      <div class="toggle-group" style="margin:0;">
-        <div class="toggle-row">
-          <label class="toggle-switch">
-            <input type="checkbox" id="fDarkMode">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label" id="darkModeToggleLabel">🌞 Light mode</span>
-        </div>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">There's also a quick toggle for this in the top menu.</p>
+      <div style="display:flex; gap:0; border:1px solid var(--line); border-radius:20px; overflow:hidden; width:fit-content;">
+        <button class="visits-mode-btn theme-pref-btn" data-theme-pref="system" type="button">🖥️ System</button>
+        <button class="visits-mode-btn theme-pref-btn" data-theme-pref="light" type="button">🌞 Light</button>
+        <button class="visits-mode-btn theme-pref-btn" data-theme-pref="dark" type="button">🌙 Dark</button>
       </div>
     </div>
 
@@ -1282,6 +1303,16 @@ let trips = loadTrips().map(migrateTrip);
    SETTINGS (home base + companions)
 --------------------------------------------------------------- */
 const SETTINGS_KEY = 'waypoints.settings.v1';
+function normalizeThemePreference(s){
+  if(s.themePreference === 'light' || s.themePreference === 'dark' || s.themePreference === 'system'){
+    return s.themePreference;
+  }
+  // Migrating from the old boolean darkMode field: explicit true means they'd
+  // turned it on before, so keep that; anything else (including never having
+  // touched it) now defaults to following the device, which is the better
+  // default going forward.
+  return s.darkMode === true ? 'dark' : 'system';
+}
 function loadSettings(){
   try{
     const s = JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {};
@@ -1290,11 +1321,11 @@ function loadSettings(){
       companions: Array.isArray(s.companions) ? s.companions : [],
       unit: (s.unit === 'metric') ? 'metric' : 'imperial',
       currencySymbol: (typeof s.currencySymbol === 'string' && s.currencySymbol) ? s.currencySymbol : '£',
-      darkMode: s.darkMode === true,
+      themePreference: normalizeThemePreference(s),
       remindersEnabled: s.remindersEnabled === true,
       googleClientId: (typeof s.googleClientId === 'string') ? s.googleClientId : ''
     };
-  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£', darkMode:false, remindersEnabled:false, googleClientId:'' }; }
+  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£', themePreference:'system', remindersEnabled:false, googleClientId:'' }; }
 }
 function saveSettings(s){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
@@ -1804,14 +1835,16 @@ document.getElementById('fPhotoInput').addEventListener('change', (e)=>{
   reader.onload = (ev)=>{
     const img = new Image();
     img.onload = ()=>{
-      const maxW = 500;
-      const scale = Math.min(1, maxW / img.width);
+      // Crop to a centered square so it fits a Polaroid frame cleanly,
+      // then compress to keep localStorage usage small.
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      const targetSize = 500;
       const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
+      canvas.width = targetSize; canvas.height = targetSize;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      pendingPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, targetSize, targetSize);
+      pendingPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.7);
       showPhotoPreview(pendingPhotoDataUrl);
     };
     img.src = ev.target.result;
@@ -2275,7 +2308,7 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
 --------------------------------------------------------------- */
 let homePicker = null;
 function renderSettingsView(){
-  applyTheme(settings.darkMode);
+  applyTheme();
   if(!homePicker){
     homePicker = createLocationPicker(document.getElementById('lpHome'), 'Search for your home city', settings.home);
   }else{
@@ -2286,8 +2319,6 @@ function renderSettingsView(){
   document.getElementById('fCurrencySymbol').value = settings.currencySymbol;
   document.getElementById('fGoogleClientId').value = settings.googleClientId;
   updateDriveUI();
-  document.getElementById('fDarkMode').checked = settings.darkMode;
-  updateDarkModeToggleLabel();
   document.getElementById('fReminders').checked = settings.remindersEnabled;
   document.getElementById('remindersToggleLabel').textContent = settings.remindersEnabled ? 'On' : 'Off';
   renderCompanionChips();
@@ -2301,20 +2332,56 @@ function updateUnitToggleLabel(){
 document.getElementById('fUnitMetric').addEventListener('change', updateUnitToggleLabel);
 
 /* ---------------------------------------------------------------
-   DARK MODE
+   THEME (light / dark / follow device)
 --------------------------------------------------------------- */
-function applyTheme(isDark){
+function systemPrefersDark(){
+  return !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+}
+function effectiveIsDark(){
+  if(settings.themePreference === 'dark') return true;
+  if(settings.themePreference === 'light') return false;
+  return systemPrefersDark();
+}
+function applyTheme(){
+  const isDark = effectiveIsDark();
   document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+  const headerBtn = document.getElementById('headerThemeToggle');
+  if(headerBtn) headerBtn.textContent = isDark ? '🌞' : '🌙';
+  document.querySelectorAll('.theme-pref-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.themePref === settings.themePreference);
+  });
 }
-function updateDarkModeToggleLabel(){
-  const isDark = document.getElementById('fDarkMode').checked;
-  document.getElementById('darkModeToggleLabel').textContent = isDark ? '🌙 Dark mode' : '🌞 Light mode';
-}
-document.getElementById('fDarkMode').addEventListener('change', ()=>{
-  updateDarkModeToggleLabel();
-  applyTheme(document.getElementById('fDarkMode').checked); // preview immediately, saved on "Save settings"
+
+// Header quick-toggle: an immediate, persisted action — flips between light
+// and dark explicitly (stepping out of "follow device" if that was active).
+document.getElementById('headerThemeToggle').addEventListener('click', ()=>{
+  settings.themePreference = effectiveIsDark() ? 'light' : 'dark';
+  saveSettings(settings);
+  applyTheme();
+  updateMapTiles();
 });
-applyTheme(settings.darkMode); // apply saved preference as soon as the page loads
+
+// Settings page selector: previews immediately like the rest of Settings,
+// persisted when "Save settings" is clicked.
+document.querySelectorAll('.theme-pref-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    settings.themePreference = btn.dataset.themePref;
+    applyTheme();
+  });
+});
+
+// If following the device and the OS preference changes while the app is
+// open, update live rather than waiting for a reload.
+if(window.matchMedia){
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=>{
+    if(settings.themePreference === 'system'){
+      applyTheme();
+      updateMapTiles();
+    }
+  });
+}
+
+applyTheme(); // apply saved (or device) preference as soon as the page loads
 function renderCompanionChips(){
   const container = document.getElementById('companionChips');
   container.innerHTML = '';
@@ -2359,11 +2426,10 @@ document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
   settings.home = homePicker.getValue();
   settings.unit = document.getElementById('fUnitMetric').checked ? 'metric' : 'imperial';
   settings.currencySymbol = document.getElementById('fCurrencySymbol').value.trim() || '£';
-  settings.darkMode = document.getElementById('fDarkMode').checked;
   settings.remindersEnabled = document.getElementById('fReminders').checked;
   settings.googleClientId = document.getElementById('fGoogleClientId').value.trim();
   saveSettings(settings);
-  applyTheme(settings.darkMode);
+  applyTheme();
   updateMapTiles();
   renderTrips();
   const confirmEl = document.getElementById('settingsSaveConfirm');
@@ -2623,10 +2689,10 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
           companions: Array.isArray(data.settings.companions) ? data.settings.companions : [],
           unit: (data.settings.unit === 'metric') ? 'metric' : 'imperial',
           currencySymbol: (typeof data.settings.currencySymbol === 'string' && data.settings.currencySymbol) ? data.settings.currencySymbol : '£',
-          darkMode: data.settings.darkMode === true,
+          themePreference: normalizeThemePreference(data.settings),
           remindersEnabled: data.settings.remindersEnabled === true
         }
-      : { home: null, companions: [], unit: 'imperial', currencySymbol: '£', darkMode: false, remindersEnabled: false };
+      : { home: null, companions: [], unit: 'imperial', currencySymbol: '£', themePreference: 'system', remindersEnabled: false };
 
     pendingImport = { trips: importedTrips, settings: importedSettings };
 
@@ -2998,7 +3064,12 @@ function buildStampSvg(trip){
   const country = (trip.country || effectiveContinent(trip) || 'UNKNOWN').toUpperCase();
   const place = trip.place.toUpperCase();
   const date = new Date(trip.startDate+'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
-  const flag = flagForTrip(trip);
+  // Country CODE as text, not a flag emoji: flag emoji rely on the browser
+  // pairing two "regional indicator" characters into one glyph, which SVG
+  // text rendering doesn't reliably do across browsers/platforms — some
+  // show two boxed letters instead of a flag. Plain text always renders
+  // correctly, and real customs stamps often show a code like this anyway.
+  const countryCode = (trip.countryCode || '').toUpperCase();
   const uid = 'stamp' + seed + '-' + trip.id.replace(/[^a-z0-9]/gi,'');
   const W = 140, H = 140, cx = W/2, cy = H/2;
   let inner = '';
@@ -3014,7 +3085,7 @@ function buildStampSvg(trip){
       <path id="${uid}b" d="${botPath}" fill="none"/>
       <text font-size="9.5" font-weight="700" letter-spacing="1.4" fill="${color}"><textPath href="#${uid}t" startOffset="50%" text-anchor="middle">${escapeHtml(country.slice(0,24))}</textPath></text>
       <text font-size="8.5" font-weight="600" letter-spacing="1" fill="${color}"><textPath href="#${uid}b" startOffset="50%" text-anchor="middle">${escapeHtml(date)}</textPath></text>
-      ${flag ? `<text x="${cx}" y="${cy-2}" font-size="20" text-anchor="middle">${flag}</text>
+      ${countryCode ? `<text x="${cx}" y="${cy-4}" font-size="19" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif" letter-spacing="1">${escapeHtml(countryCode)}</text>
       <text x="${cx}" y="${cy+18}" font-size="9" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,16))}</text>`
       : `<text x="${cx}" y="${cy+7}" font-size="15" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>`}
     `;
@@ -3261,7 +3332,9 @@ function tripCard(trip, counts, opts){
   const div = document.createElement('div');
   div.className = 'trip-card ' + (upcoming ? 'upcoming' : 'past');
   div.innerHTML = `
-    <img class="trip-thumb" src="${trip.photo || `https://staticmap.openstreetmap.de/staticmap.php?center=${trip.lat},${trip.lng}&zoom=10&size=120x120&markers=${trip.lat},${trip.lng},lightblue1`}" alt="" loading="lazy" onerror="this.remove()">
+    ${trip.photo
+      ? `<div class="trip-thumb-polaroid"><img src="${trip.photo}" alt="" loading="lazy"></div>`
+      : `<img class="trip-thumb" src="https://staticmap.openstreetmap.de/staticmap.php?center=${trip.lat},${trip.lng}&zoom=10&size=120x120&markers=${trip.lat},${trip.lng},lightblue1" alt="" loading="lazy" onerror="this.remove()">`}
     <div class="trip-main">
       <h3>${flag ? flag+' ' : ''}${escapeHtml(trip.place)} ${badges.join(' ')} ${count > 1 ? `<span class="stamp">×${count}</span>` : ''}</h3>
       <div class="trip-meta">${metaParts.join('')}</div>
@@ -3425,7 +3498,10 @@ async function generateTripShareCanvas(trip){
   const headerH = 400;
   const rowsH = rows.length * 50;
   const footerH = 110;
-  const photoH = trip.photo ? 260 : 0;
+  const polaroidSize = 340, polaroidPad = 16, polaroidBottomPad = 46;
+  const polaroidW = polaroidSize + polaroidPad*2;
+  const polaroidH = polaroidSize + polaroidPad + polaroidBottomPad;
+  const photoH = trip.photo ? polaroidH + 50 : 0;
   const H = headerH + rowsH + notesH + footerH + photoH;
 
   const canvas = document.createElement('canvas');
@@ -3437,15 +3513,24 @@ async function generateTripShareCanvas(trip){
     await new Promise(resolve=>{
       const img = new Image();
       img.onload = ()=>{
-        const areaX = 36, areaY = 36, areaW = W-72, areaH = photoH-20;
-        // cover-fit crop, centered
-        const scale = Math.max(areaW/img.width, areaH/img.height);
-        const sw = areaW/scale, sh = areaH/scale;
-        const sx = (img.width-sw)/2, sy = (img.height-sh)/2;
+        const px = (W-polaroidW)/2, py = 32;
         ctx.save();
-        crCanvasRoundRect(ctx, areaX, areaY, areaW, areaH, 14);
-        ctx.clip();
-        ctx.drawImage(img, sx, sy, sw, sh, areaX, areaY, areaW, areaH);
+        ctx.translate(px+polaroidW/2, py+polaroidH/2);
+        ctx.rotate(-2 * Math.PI/180);
+        ctx.translate(-(px+polaroidW/2), -(py+polaroidH/2));
+
+        ctx.shadowColor = 'rgba(0,0,0,0.28)';
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetY = 6;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px, py, polaroidW, polaroidH);
+        ctx.shadowColor = 'transparent';
+
+        const photoX = px+polaroidPad, photoY = py+polaroidPad;
+        const scale = Math.max(polaroidSize/img.width, polaroidSize/img.height);
+        const sw = polaroidSize/scale, sh = polaroidSize/scale;
+        const sx = (img.width-sw)/2, sy = (img.height-sh)/2;
+        ctx.drawImage(img, sx, sy, sw, sh, photoX, photoY, polaroidSize, polaroidSize);
         ctx.restore();
         resolve();
       };
@@ -4073,7 +4158,7 @@ function upgradeToRoadRoute(straightLine, from, to, lineStyle, gen){
 
 let tileLayer = null;
 function tileConfigForTheme(){
-  return settings.darkMode
+  return effectiveIsDark()
     ? {
         url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
