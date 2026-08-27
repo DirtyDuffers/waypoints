@@ -27,6 +27,8 @@
 <meta name="theme-color" content="#1c2b3a">
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -361,6 +363,24 @@
   .passport-stamp .stamp-place{font-family:'Fraunces',serif; font-weight:600; font-size:.72rem; margin-top:3px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
   .passport-stamp .stamp-date{font-family:'JetBrains Mono',monospace; font-size:.6rem; color:var(--ink-soft); margin-top:2px;}
   .passport-stamp.upcoming{opacity:.55; border-style:dotted;}
+
+  .firsts-timeline{position:relative; padding-left:34px;}
+  .firsts-timeline::before{content:""; position:absolute; left:14px; top:6px; bottom:6px; width:2px; background:var(--line);}
+  .firsts-item{position:relative; margin-bottom:16px;}
+  .firsts-icon{
+    position:absolute; left:-34px; top:0; width:28px; height:28px; border-radius:50%;
+    background:var(--card); border:2px solid var(--gold); display:flex; align-items:center; justify-content:center;
+    font-size:.95rem;
+  }
+  .firsts-label{font-weight:600; font-size:.9rem;}
+  .firsts-meta{font-size:.78rem; color:var(--ink-soft); font-family:'JetBrains Mono',monospace; margin-top:2px;}
+
+  .companion-hub-card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 16px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .companion-hub-card h3{font-size:1rem; margin:0 0 4px;}
+  .companion-hub-meta{font-size:.82rem; color:var(--ink-soft);}
   .milestone-badge{
     text-align:center; padding:10px 4px; border-radius:50%; aspect-ratio:1;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -462,7 +482,8 @@
       <button class="link-btn" data-view="wishlist">✨ View wishlist</button>
     </div>
     <div class="add-bar">
-      <input type="text" id="tripSearch" placeholder="🔍 Search by place, companion, or year…" style="flex:1; margin-right:10px;">
+      <input type="text" id="tripSearch" list="recentSearches" placeholder="🔍 Search by place, companion, or year…" style="flex:1; margin-right:10px;">
+      <datalist id="recentSearches"></datalist>
       <button id="addTripBtn">+ Log a trip</button>
     </div>
 
@@ -614,6 +635,17 @@
 
       <div class="form-row">
         <div class="form-field full">
+          <label>Cover photo 📷</label>
+          <input type="file" id="fPhotoInput" accept="image/*">
+          <div id="photoPreviewWrap" style="display:none; margin-top:8px;">
+            <img id="photoPreview" style="max-width:140px; max-height:140px; border-radius:8px; border:1px solid var(--line); display:block;">
+            <button type="button" class="btn btn-ghost" id="removePhotoBtn" style="margin-top:6px;">Remove photo</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
           <label>Tags 🏷️</label>
           <input type="text" id="fTags" list="tagOptions" placeholder="e.g. beach, family, work — separate with commas">
           <datalist id="tagOptions"></datalist>
@@ -759,6 +791,13 @@
 
   <!-- MAP VIEW -->
   <section id="view-map" class="view">
+    <div class="add-bar" style="margin-bottom:10px;">
+      <label class="toggle-switch">
+        <input type="checkbox" id="fMapCluster">
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-label" style="margin-left:8px;">🔵 Cluster nearby pins</span>
+    </div>
     <div id="map"></div>
     <div class="legend">
       <span><span class="swatch past"></span>Been there</span>
@@ -807,6 +846,7 @@
       <button class="link-btn" id="shareAllTimeBtn">📤 Share my stats</button>
       <button class="link-btn" data-view="countries">🌍 Country checklist</button>
       <button class="link-btn" data-view="passport">🛂 Passport</button>
+      <button class="link-btn" data-view="firsts">🎉 Firsts</button>
     </div>
     <div class="stat-grid" id="statGrid"></div>
 
@@ -825,6 +865,7 @@
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">See everywhere you've been with one person.</p>
       <select id="companionWrappedSelect" style="max-width:160px; margin-right:8px;"></select>
       <button class="btn btn-teal" id="viewCompanionWrappedBtn" type="button">View recap</button>
+      <div style="margin-top:10px;"><button class="link-btn" data-view="companionshub">See everyone at a glance →</button></div>
     </div>
     <div class="breakdown" style="text-align:center;">
       <h3>⚖️ Compare two years</h3>
@@ -922,6 +963,26 @@
     <div class="passport-grid" id="passportGrid"></div>
   </section>
 
+  <!-- COMPANIONS HUB VIEW -->
+  <section id="view-companionshub" class="view">
+    <button class="back-link" data-view="stats">← Back to Stats</button>
+    <div class="about-hero" style="padding-top:4px;">
+      <h2 style="font-size:1.3rem;">👥 Companions</h2>
+      <div class="tagline">Everyone you've travelled with, at a glance.</div>
+    </div>
+    <div id="companionsHubList"></div>
+  </section>
+
+  <!-- FIRSTS VIEW -->
+  <section id="view-firsts" class="view">
+    <button class="back-link" data-view="stats">← Back to Stats</button>
+    <div class="about-hero" style="padding-top:4px;">
+      <h2 style="font-size:1.3rem;">🎉 Firsts</h2>
+      <div class="tagline">Every "first time" milestone, in order.</div>
+    </div>
+    <div id="firstsTimeline"></div>
+  </section>
+
   <!-- ABOUT VIEW -->
   <section id="view-about" class="view">
     <div class="about-hero">
@@ -969,7 +1030,21 @@
 
     <div class="about-card">
       <h3>🔒 Your data</h3>
-      <p>Waypoints is a single-file travel log — no accounts, no cloud, no tracking. Everything you enter is stored only in this browser, on this device.</p>
+      <p>Waypoints is a single-file travel log — no accounts, no tracking. Everything is stored only in this browser by default. Google Drive sync in Settings is entirely optional and off unless you set it up yourself.</p>
+    </div>
+
+    <div class="about-card">
+      <h3>☁️ Setting up Google Drive sync</h3>
+      <p>This is optional, and only needed if you want your log on more than one device. It takes about 5 minutes, once:</p>
+      <ol style="font-size:.85rem; line-height:1.7; padding-left:20px; margin:0;">
+        <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and create a new project (any name).</li>
+        <li>Search for and enable the <strong>Google Drive API</strong> for that project.</li>
+        <li>Go to <strong>APIs &amp; Services → OAuth consent screen</strong>, choose "External," fill in the required fields, and add your own Google account as a test user.</li>
+        <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>, choose "Web application."</li>
+        <li>Under <strong>Authorized JavaScript origins</strong>, add the exact URL Waypoints is hosted at (e.g. <code>https://yourusername.github.io</code> — no trailing slash or path).</li>
+        <li>Copy the Client ID it gives you, paste it into the Google Drive sync box in Settings, and click Connect.</li>
+      </ol>
+      <p style="font-size:.78rem; color:var(--ink-soft); margin-top:10px;">While your app is in "Testing" mode in Google Cloud, only accounts you've added as test users can sign in — which is fine, since this is just for your own devices.</p>
     </div>
 
     <div class="about-card">
@@ -1002,6 +1077,25 @@
       <h3 style="font-size:.95rem;">🏠 Home / base location</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Used to work out how far each trip is from home, and to plot flight paths on the map.</p>
       <div id="lpHome"></div>
+    </div>
+
+    <div class="panel">
+      <h3 style="font-size:.95rem;">☁️ Google Drive sync</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">
+        Get your log onto another device without manually exporting/importing a file. This needs a one-time setup step on your end — a free Google Cloud OAuth Client ID registered to your GitHub Pages domain, since Google requires that for any app that asks to access Drive. See the About page for setup instructions.
+      </p>
+      <label>Google OAuth Client ID</label>
+      <input type="text" id="fGoogleClientId" placeholder="xxxxx.apps.googleusercontent.com" style="margin-bottom:10px;">
+      <div id="driveStatus" style="font-size:.85rem; color:var(--ink-soft); margin-bottom:10px;">Not connected.</div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-teal" id="driveConnectBtn" type="button">🔑 Connect Google Drive</button>
+        <button class="btn btn-ghost" id="driveDisconnectBtn" type="button" style="display:none;">Disconnect</button>
+        <button class="btn btn-teal" id="driveUploadBtn" type="button" style="display:none;">⬆️ Upload my data to Drive</button>
+        <button class="btn btn-rust" id="driveDownloadBtn" type="button" style="display:none;">⬇️ Download from Drive</button>
+      </div>
+      <p style="font-size:.78rem; color:var(--ink-soft); margin-top:10px;">
+        Note: since this app has no server, the connection only lasts for this browser session (roughly an hour) — you'll click "Connect" again next time. Upload and Download are both one-way and explicit, like the JSON export/import, just without the manual file step.
+      </p>
     </div>
 
     <div class="panel">
@@ -1121,6 +1215,8 @@
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
 /* ---------------------------------------------------------------
    DATA LAYER
@@ -1161,6 +1257,7 @@ function migrateTrip(t){
   if(!Array.isArray(t.tags)) t.tags = [];
   if(typeof t.cost !== 'number' || isNaN(t.cost)) t.cost = null;
   if(typeof t.hotel !== 'string') t.hotel = '';
+  if(typeof t.photo !== 'string') t.photo = null;
   if(!Array.isArray(t.packing)) t.packing = [];
   if(t.costBreakdown && typeof t.costBreakdown === 'object'){
     ['flights','accommodation','food','activities','other'].forEach(k=>{
@@ -1187,9 +1284,10 @@ function loadSettings(){
       unit: (s.unit === 'metric') ? 'metric' : 'imperial',
       currencySymbol: (typeof s.currencySymbol === 'string' && s.currencySymbol) ? s.currencySymbol : '£',
       darkMode: s.darkMode === true,
-      remindersEnabled: s.remindersEnabled === true
+      remindersEnabled: s.remindersEnabled === true,
+      googleClientId: (typeof s.googleClientId === 'string') ? s.googleClientId : ''
     };
-  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£', darkMode:false, remindersEnabled:false }; }
+  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£', darkMode:false, remindersEnabled:false, googleClientId:'' }; }
 }
 function saveSettings(s){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
@@ -1319,6 +1417,15 @@ function isUpcoming(trip){
 function dayCount(start, end){
   const a = new Date(start), b = new Date(end);
   return Math.round((b - a) / 86400000) + 1;
+}
+function seasonEmoji(trip){
+  const month = parseInt(trip.startDate.slice(5,7), 10);
+  const isSouthern = typeof trip.lat === 'number' && trip.lat < 0;
+  // Meteorological seasons by month, Northern hemisphere as the default;
+  // Southern hemisphere is offset by 6 months.
+  const NORTH = { 12:'❄️',1:'❄️',2:'❄️', 3:'🌸',4:'🌸',5:'🌸', 6:'☀️',7:'☀️',8:'☀️', 9:'🍂',10:'🍂',11:'🍂' };
+  const SOUTH = { 12:'☀️',1:'☀️',2:'☀️', 3:'🍂',4:'🍂',5:'🍂', 6:'❄️',7:'❄️',8:'❄️', 9:'🌸',10:'🌸',11:'🌸' };
+  return (isSouthern ? SOUTH : NORTH)[month] || '';
 }
 function placeKey(trip){
   // Group "same place" by the name and country you gave it, not raw GPS
@@ -1603,12 +1710,14 @@ function switchView(name){
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   const target = document.getElementById('view-'+name);
   if(target) target.classList.add('active');
-  if(name === 'map'){ initMapIfNeeded(); renderMap(); }
+  if(name === 'map'){ document.getElementById('fMapCluster').checked = mapClusterMode; initMapIfNeeded(); renderMap(); }
   if(name === 'stats'){ renderStats(); }
   if(name === 'settings'){ renderSettingsView(); }
   if(name === 'wishlist'){ renderWishlist(); }
   if(name === 'countries'){ renderCountryChecklist(); }
   if(name === 'passport'){ renderPassport(); }
+  if(name === 'firsts'){ renderFirsts(); }
+  if(name === 'companionshub'){ renderCompanionsHub(); }
   window.scrollTo({top:0});
 }
 document.querySelectorAll('[data-view]').forEach(btn=>{
@@ -1629,6 +1738,47 @@ document.getElementById('addTripBtn').addEventListener('click', ()=>{
 });
 document.getElementById('cancelForm').addEventListener('click', ()=>{
   form.style.display = 'none';
+});
+
+/* ---------------------------------------------------------------
+   TRIP COVER PHOTO (compressed client-side, stored as base64 — no
+   upload service needed, keeps everything in this one browser)
+--------------------------------------------------------------- */
+let pendingPhotoDataUrl = null;
+function showPhotoPreview(dataUrl){
+  const wrap = document.getElementById('photoPreviewWrap');
+  if(dataUrl){
+    document.getElementById('photoPreview').src = dataUrl;
+    wrap.style.display = 'block';
+  }else{
+    wrap.style.display = 'none';
+  }
+}
+document.getElementById('fPhotoInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const maxW = 500;
+      const scale = Math.min(1, maxW / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      pendingPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.65);
+      showPhotoPreview(pendingPhotoDataUrl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+document.getElementById('removePhotoBtn').addEventListener('click', ()=>{
+  pendingPhotoDataUrl = null;
+  document.getElementById('fPhotoInput').value = '';
+  showPhotoPreview(null);
 });
 
 function clearForm(){
@@ -1663,6 +1813,9 @@ function clearForm(){
   clearCostBreakdownFields();
   populateTemplateSelect();
   document.getElementById('templateSelect').value = '';
+  pendingPhotoDataUrl = null;
+  document.getElementById('fPhotoInput').value = '';
+  showPhotoPreview(null);
 }
 
 function populateGroupNameOptions(){
@@ -1735,10 +1888,16 @@ function renderTemplateChips(){
     chip.className = 'settings-chip';
     chip.innerHTML = `<span>${escapeHtml(tpl.name)}</span><button type="button" aria-label="Remove template ${escapeAttr(tpl.name)}">✕</button>`;
     chip.querySelector('button').addEventListener('click', ()=>{
-      templates.splice(idx, 1);
+      const removed = templates.splice(idx, 1)[0];
       saveTemplates(templates);
       renderTemplateChips();
       populateTemplateSelect();
+      showUndoToast(`Removed template "${removed.name}"`, ()=>{
+        templates.splice(idx, 0, removed);
+        saveTemplates(templates);
+        renderTemplateChips();
+        populateTemplateSelect();
+      });
     });
     container.appendChild(chip);
   });
@@ -1758,10 +1917,16 @@ function renderPackingTemplateChips(){
     chip.title = pt.items.join(', ');
     chip.innerHTML = `<span>${escapeHtml(pt.name)} (${pt.items.length})</span><button type="button" aria-label="Remove packing template ${escapeAttr(pt.name)}">✕</button>`;
     chip.querySelector('button').addEventListener('click', ()=>{
-      packingTemplates.splice(idx, 1);
+      const removed = packingTemplates.splice(idx, 1)[0];
       savePackingTemplates(packingTemplates);
       renderPackingTemplateChips();
       renderTrips(); // trip cards show the template dropdown, needs refreshing
+      showUndoToast(`Removed packing template "${removed.name}"`, ()=>{
+        packingTemplates.splice(idx, 0, removed);
+        savePackingTemplates(packingTemplates);
+        renderPackingTemplateChips();
+        renderTrips();
+      });
     });
     container.appendChild(chip);
   });
@@ -2038,6 +2203,7 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     cost: document.getElementById('fCost').value === '' ? null : parseFloat(document.getElementById('fCost').value),
     costBreakdown: getCostBreakdownFromForm(),
     hotel: document.getElementById('fHotel').value.trim(),
+    photo: pendingPhotoDataUrl,
     customBase: document.getElementById('fUseCustomBase').checked ? customBasePicker.getValue() : null,
     cruise: isCruise ? {
       cruiseLine: document.getElementById('fCruiseLine').value.trim(),
@@ -2075,6 +2241,8 @@ function renderSettingsView(){
   document.getElementById('fUnitMetric').checked = settings.unit === 'metric';
   updateUnitToggleLabel();
   document.getElementById('fCurrencySymbol').value = settings.currencySymbol;
+  document.getElementById('fGoogleClientId').value = settings.googleClientId;
+  updateDriveUI();
   document.getElementById('fDarkMode').checked = settings.darkMode;
   updateDarkModeToggleLabel();
   document.getElementById('fReminders').checked = settings.remindersEnabled;
@@ -2116,9 +2284,14 @@ function renderCompanionChips(){
     chip.className = 'settings-chip';
     chip.innerHTML = `<span>${escapeHtml(name)}</span><button type="button" aria-label="Remove companion ${escapeAttr(name)}">✕</button>`;
     chip.querySelector('button').addEventListener('click', ()=>{
-      settings.companions.splice(idx, 1);
+      const removed = settings.companions.splice(idx, 1)[0];
       saveSettings(settings);
       renderCompanionChips();
+      showUndoToast(`Removed companion "${removed}"`, ()=>{
+        settings.companions.splice(idx, 0, removed);
+        saveSettings(settings);
+        renderCompanionChips();
+      });
     });
     container.appendChild(chip);
   });
@@ -2145,6 +2318,7 @@ document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
   settings.currencySymbol = document.getElementById('fCurrencySymbol').value.trim() || '£';
   settings.darkMode = document.getElementById('fDarkMode').checked;
   settings.remindersEnabled = document.getElementById('fReminders').checked;
+  settings.googleClientId = document.getElementById('fGoogleClientId').value.trim();
   saveSettings(settings);
   applyTheme(settings.darkMode);
   updateMapTiles();
@@ -2157,6 +2331,170 @@ document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
 /* ---------------------------------------------------------------
    BACKUP / EXPORT / IMPORT
 --------------------------------------------------------------- */
+/* ---------------------------------------------------------------
+   GOOGLE DRIVE SYNC
+   Uses Google Identity Services for OAuth (implicit token flow —
+   no backend, so no refresh token; the connection lasts roughly an
+   hour, matching Google's default access token lifetime, then the
+   person reconnects). Files are stored in the hidden "appDataFolder"
+   scope, so they never appear in the person's regular Drive listing.
+--------------------------------------------------------------- */
+const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+const DRIVE_FILENAME = 'waypoints-sync.json';
+let driveAccessToken = null;
+let driveTokenClient = null;
+let driveFileId = null;
+
+function updateDriveUI(){
+  const status = document.getElementById('driveStatus');
+  const connected = !!driveAccessToken;
+  document.getElementById('driveConnectBtn').style.display = connected ? 'none' : 'inline-block';
+  document.getElementById('driveDisconnectBtn').style.display = connected ? 'inline-block' : 'none';
+  document.getElementById('driveUploadBtn').style.display = connected ? 'inline-block' : 'none';
+  document.getElementById('driveDownloadBtn').style.display = connected ? 'inline-block' : 'none';
+  status.textContent = connected
+    ? '✅ Connected for this session — you can upload or download now.'
+    : 'Not connected.';
+}
+
+document.getElementById('driveConnectBtn').addEventListener('click', ()=>{
+  const clientId = document.getElementById('fGoogleClientId').value.trim();
+  if(!clientId){
+    alert("Paste your Google OAuth Client ID above first — see the About page for how to create one.");
+    return;
+  }
+  settings.googleClientId = clientId;
+  saveSettings(settings);
+
+  if(typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2){
+    alert("Couldn't load Google's sign-in library — check your internet connection and try again.");
+    return;
+  }
+  try{
+    driveTokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: clientId,
+      scope: DRIVE_SCOPE,
+      callback: (response)=>{
+        if(response.error){
+          alert("Google sign-in didn't complete: " + response.error);
+          return;
+        }
+        driveAccessToken = response.access_token;
+        updateDriveUI();
+      }
+    });
+    driveTokenClient.requestAccessToken();
+  }catch(e){
+    alert("Couldn't start Google sign-in — double check the Client ID is correct and registered for this domain.");
+  }
+});
+
+document.getElementById('driveDisconnectBtn').addEventListener('click', ()=>{
+  if(driveAccessToken && google.accounts && google.accounts.oauth2){
+    try{ google.accounts.oauth2.revoke(driveAccessToken, ()=>{}); }catch(e){}
+  }
+  driveAccessToken = null;
+  driveFileId = null;
+  updateDriveUI();
+});
+
+async function findDriveSyncFile(){
+  const url = `https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='${DRIVE_FILENAME}'&fields=files(id,modifiedTime)`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${driveAccessToken}` } });
+  if(!res.ok) throw new Error('Could not list Drive files (' + res.status + ')');
+  const data = await res.json();
+  return (data.files && data.files[0]) ? data.files[0] : null;
+}
+
+document.getElementById('driveUploadBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('driveUploadBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Uploading…';
+  try{
+    const payload = JSON.stringify({ app:'waypoints', exportVersion:1, exportedAt:new Date().toISOString(), settings, trips });
+    const existing = await findDriveSyncFile();
+    if(existing){
+      driveFileId = existing.id;
+      const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${driveFileId}?uploadType=media`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json' },
+        body: payload
+      });
+      if(!res.ok) throw new Error('Upload failed (' + res.status + ')');
+    }else{
+      const boundary = 'waypoints-boundary';
+      const metadata = { name: DRIVE_FILENAME, parents: ['appDataFolder'] };
+      const body =
+        `--${boundary}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+        `--${boundary}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${boundary}--`;
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${driveAccessToken}`, 'Content-Type': `multipart/related; boundary=${boundary}` },
+        body
+      });
+      if(!res.ok) throw new Error('Upload failed (' + res.status + ')');
+      const created = await res.json();
+      driveFileId = created.id;
+    }
+    document.getElementById('driveStatus').textContent = `✅ Uploaded ${trips.length} trip(s) to Drive just now.`;
+  }catch(e){
+    alert("Upload to Drive failed: " + e.message + "\n\nIf your sign-in session expired, click Disconnect and Connect again.");
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+});
+
+document.getElementById('driveDownloadBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('driveDownloadBtn');
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Checking Drive…';
+  try{
+    const existing = await findDriveSyncFile();
+    if(!existing){
+      alert("No Waypoints backup found in Drive yet — upload from another device first.");
+      return;
+    }
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${existing.id}?alt=media`, {
+      headers: { Authorization: `Bearer ${driveAccessToken}` }
+    });
+    if(!res.ok) throw new Error('Download failed (' + res.status + ')');
+    const data = await res.json();
+    if(!Array.isArray(data.trips)){
+      alert("That Drive file doesn't look like a Waypoints backup.");
+      return;
+    }
+    if(!confirm(`This will replace your current ${trips.length} trip(s) with the ${data.trips.length} trip(s) from Drive (last saved ${new Date(existing.modifiedTime).toLocaleString()}). You'll have a few seconds to undo right after. Continue?`)){
+      return;
+    }
+    const oldTrips = trips, oldSettings = settings;
+    trips = data.trips.map(migrateTrip);
+    settings = data.settings && typeof data.settings === 'object'
+      ? { ...loadSettings(), ...data.settings, googleClientId: oldSettings.googleClientId }
+      : oldSettings;
+    saveTrips(trips);
+    saveSettings(settings);
+    renderTrips();
+    renderSettingsView();
+    document.getElementById('driveStatus').textContent = `✅ Downloaded ${trips.length} trip(s) from Drive.`;
+    showUndoToast(`Replaced data from Drive (${trips.length} trips)`, ()=>{
+      trips = oldTrips;
+      settings = oldSettings;
+      saveTrips(trips);
+      saveSettings(settings);
+      renderTrips();
+      renderSettingsView();
+    });
+  }catch(e){
+    alert("Download from Drive failed: " + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+});
+
 document.getElementById('exportBtn').addEventListener('click', ()=>{
   const payload = {
     app: 'waypoints',
@@ -2283,9 +2621,10 @@ document.getElementById('importMergeBtn').addEventListener('click', ()=>{
 
 document.getElementById('importReplaceBtn').addEventListener('click', ()=>{
   if(!pendingImport) return;
-  if(!confirm(`This will permanently delete your current ${trips.length} trip(s) and settings, replacing them with the ${pendingImport.trips.length} trip(s) from this file. This can't be undone. Continue?`)){
+  if(!confirm(`This will replace your current ${trips.length} trip(s) and settings with the ${pendingImport.trips.length} trip(s) from this file. You'll have a few seconds to undo right after — after that it's permanent. Continue?`)){
     return;
   }
+  const oldTrips = trips, oldSettings = settings;
   trips = pendingImport.trips;
   settings = pendingImport.settings;
   saveTrips(trips);
@@ -2293,6 +2632,14 @@ document.getElementById('importReplaceBtn').addEventListener('click', ()=>{
   document.getElementById('importStatus').textContent = `Replaced all data with ${trips.length} trip(s) from the backup.`;
   finishImport();
   renderSettingsView(); // home picker / companion chips need to reflect the new settings object
+  showUndoToast(`Replaced all data (${trips.length} trips)`, ()=>{
+    trips = oldTrips;
+    settings = oldSettings;
+    saveTrips(trips);
+    saveSettings(settings);
+    renderTrips();
+    renderSettingsView();
+  });
 });
 
 function finishImport(){
@@ -2488,6 +2835,84 @@ function countryVisitCounts(){
   return counts;
 }
 
+function computeFirsts(){
+  const sorted = [...trips].filter(t=>!isUpcoming(t)).sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const seenCountries = new Set();
+  const seenContinents = new Set();
+  const seenModes = new Set();
+  const firsts = [];
+
+  sorted.forEach((t, i)=>{
+    if(i === 0){
+      firsts.push({ date: t.startDate, icon: '🎉', label: 'First trip ever', place: t.place });
+    }
+    if(t.country && !seenCountries.has(t.country.toLowerCase())){
+      seenCountries.add(t.country.toLowerCase());
+      firsts.push({ date: t.startDate, icon: flagForTrip(t) || '🌐', label: `First time in ${t.country}`, place: t.place });
+    }
+    const continent = effectiveContinent(t);
+    if(continent && !seenContinents.has(continent)){
+      seenContinents.add(continent);
+      firsts.push({ date: t.startDate, icon: '🌍', label: `First trip to ${continent}`, place: t.place });
+    }
+    [[t.isFlight,'✈️','flight'],[t.isCruise,'🚢','cruise'],[t.isDrive,'🚗','road trip'],[t.isTrain,'🚆','train journey'],[t.isBoat,'🚤','boat trip']]
+      .forEach(([active, icon, label])=>{
+        if(active && !seenModes.has(label)){
+          seenModes.add(label);
+          firsts.push({ date: t.startDate, icon, label: `First ${label}`, place: t.place });
+        }
+      });
+  });
+
+  return firsts.sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function renderFirsts(){
+  const el = document.getElementById('firstsTimeline');
+  const firsts = computeFirsts();
+  if(!firsts.length){
+    el.innerHTML = '<div class="empty-state"><span class="empty-icon">🎉</span><span class="empty-text">Log your first completed trip to start collecting firsts.</span></div>';
+    return;
+  }
+  el.innerHTML = `<div class="firsts-timeline">${firsts.map(f => `
+    <div class="firsts-item">
+      <div class="firsts-icon">${f.icon}</div>
+      <div class="firsts-label">${escapeHtml(f.label)}</div>
+      <div class="firsts-meta">${escapeHtml(f.place)} · ${f.date}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+function renderCompanionsHub(){
+  const el = document.getElementById('companionsHubList');
+  const names = getAllCompanionNames();
+  if(!names.length){
+    el.innerHTML = '<div class="empty-state"><span class="empty-icon">👥</span><span class="empty-text">Add companions in Settings, then tag them on trips to see them here.</span></div>';
+    return;
+  }
+  el.innerHTML = names.map(name=>{
+    const companionTrips = trips.filter(t => (t.companions||[]).includes(name));
+    const placeCounts = {}, placeNames = {};
+    companionTrips.forEach(t=>{ const k=placeKey(t); placeCounts[k]=(placeCounts[k]||0)+1; placeNames[k]=t.place; });
+    const topPlace = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1])[0];
+    return `
+      <div class="companion-hub-card">
+        <div>
+          <h3>${escapeHtml(name)}</h3>
+          <div class="companion-hub-meta">${companionTrips.length} trip${companionTrips.length!==1?'s':''} together${topPlace ? ' · Top: '+escapeHtml(placeNames[topPlace[0]]) : ''}</div>
+        </div>
+        <button class="btn btn-teal" data-action="view-companion-recap" data-name="${escapeAttr(name)}">View recap</button>
+      </div>
+    `;
+  }).join('');
+}
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-action="view-companion-recap"]');
+  if(!btn) return;
+  const name = btn.dataset.name;
+  showRecapModal(name, 'Adventures together', computeCompanionRows(name), 'companion-' + name.toLowerCase().replace(/[^a-z0-9]+/g,'-'));
+});
+
 function renderPassport(){
   const grid = document.getElementById('passportGrid');
   const summary = document.getElementById('passportSummary');
@@ -2677,7 +3102,7 @@ function tripCard(trip, counts, opts){
   if(trip.isBoat) badges.push('🚤');
 
   const metaParts = [];
-  metaParts.push(`<span class="mono">${trip.startDate} → ${trip.endDate}</span>`);
+  metaParts.push(`<span class="mono">${seasonEmoji(trip)} ${trip.startDate} → ${trip.endDate}</span>`);
   metaParts.push(`<span>${days} day${days!==1?'s':''}</span>`);
   if(trip.country) metaParts.push(`<span>${escapeHtml(trip.country)}</span>`);
   if(names.length) metaParts.push(`<span>with ${escapeHtml(names.join(', '))}</span>`);
@@ -2706,7 +3131,7 @@ function tripCard(trip, counts, opts){
   const div = document.createElement('div');
   div.className = 'trip-card ' + (upcoming ? 'upcoming' : 'past');
   div.innerHTML = `
-    <img class="trip-thumb" src="https://staticmap.openstreetmap.de/staticmap.php?center=${trip.lat},${trip.lng}&zoom=10&size=120x120&markers=${trip.lat},${trip.lng},lightblue1" alt="" loading="lazy" onerror="this.remove()">
+    <img class="trip-thumb" src="${trip.photo || `https://staticmap.openstreetmap.de/staticmap.php?center=${trip.lat},${trip.lng}&zoom=10&size=120x120&markers=${trip.lat},${trip.lng},lightblue1`}" alt="" loading="lazy" onerror="this.remove()">
     <div class="trip-main">
       <h3>${flag ? flag+' ' : ''}${escapeHtml(trip.place)} ${badges.join(' ')} ${count > 1 ? `<span class="stamp">×${count}</span>` : ''}</h3>
       <div class="trip-meta">${metaParts.join('')}</div>
@@ -2870,34 +3295,57 @@ async function generateTripShareCanvas(trip){
   const headerH = 400;
   const rowsH = rows.length * 50;
   const footerH = 110;
-  const H = headerH + rowsH + notesH + footerH;
+  const photoH = trip.photo ? 260 : 0;
+  const H = headerH + rowsH + notesH + footerH + photoH;
 
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext('2d');
   crDrawCardFrame(ctx, W, H);
 
+  if(trip.photo){
+    await new Promise(resolve=>{
+      const img = new Image();
+      img.onload = ()=>{
+        const areaX = 36, areaY = 36, areaW = W-72, areaH = photoH-20;
+        // cover-fit crop, centered
+        const scale = Math.max(areaW/img.width, areaH/img.height);
+        const sw = areaW/scale, sh = areaH/scale;
+        const sx = (img.width-sw)/2, sy = (img.height-sh)/2;
+        ctx.save();
+        crCanvasRoundRect(ctx, areaX, areaY, areaW, areaH, 14);
+        ctx.clip();
+        ctx.drawImage(img, sx, sy, sw, sh, areaX, areaY, areaW, areaH);
+        ctx.restore();
+        resolve();
+      };
+      img.onerror = resolve;
+      img.src = trip.photo;
+    });
+  }
+
+  const yOff = photoH;
   const flag = flagForTrip(trip);
   ctx.textAlign = 'center';
   ctx.font = '80px sans-serif';
-  ctx.fillText(flag, W/2, 160);
+  ctx.fillText(flag, W/2, 160+yOff);
 
   ctx.fillStyle = '#1c2b3a';
   ctx.font = '700 58px Fraunces, serif';
-  ctx.fillText(trip.place, W/2, 250);
+  ctx.fillText(trip.place, W/2, 250+yOff);
 
   const days = dayCount(trip.startDate, trip.endDate);
   ctx.fillStyle = '#4a5a68';
   ctx.font = '400 26px "JetBrains Mono", monospace';
-  ctx.fillText(`${trip.startDate} → ${trip.endDate}  ·  ${days} day${days!==1?'s':''}`, W/2, 300);
+  ctx.fillText(`${trip.startDate} → ${trip.endDate}  ·  ${days} day${days!==1?'s':''}`, W/2, 300+yOff);
 
   ctx.strokeStyle = '#ddd0ac';
   ctx.lineWidth = 2;
   ctx.setLineDash([2,6]);
-  ctx.beginPath(); ctx.moveTo(80, 340); ctx.lineTo(W-80, 340); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(80, 340+yOff); ctx.lineTo(W-80, 340+yOff); ctx.stroke();
   ctx.setLineDash([]);
 
-  let y = 400;
+  let y = 400+yOff;
   rows.forEach(([label,value])=>{
     crStatRow(ctx, 80, y, W-160, label, value);
     y += 50;
@@ -2953,6 +3401,28 @@ document.getElementById('tripSearch').addEventListener('input', e=>{
   searchQuery = e.target.value.trim().toLowerCase();
   renderTrips();
 });
+
+const RECENT_SEARCHES_KEY = 'waypoints.recentSearches.v1';
+function loadRecentSearches(){
+  try{ return JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY)) || []; }catch(e){ return []; }
+}
+function populateRecentSearches(){
+  document.getElementById('recentSearches').innerHTML =
+    loadRecentSearches().map(t => `<option value="${escapeAttr(t)}">`).join('');
+}
+function saveRecentSearch(term){
+  term = term.trim();
+  if(term.length < 2) return;
+  let list = loadRecentSearches().filter(t => t.toLowerCase() !== term.toLowerCase());
+  list.unshift(term);
+  localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list.slice(0, 8)));
+  populateRecentSearches();
+}
+document.getElementById('tripSearch').addEventListener('blur', e=> saveRecentSearch(e.target.value));
+document.getElementById('tripSearch').addEventListener('keydown', e=>{
+  if(e.key === 'Enter') saveRecentSearch(e.target.value);
+});
+populateRecentSearches();
 
 const activeQuickFilters = new Set();
 let filterDateFrom = '', filterDateTo = '';
@@ -3289,6 +3759,9 @@ function openEditForm(t){
   setCostBreakdownFormFields(t.costBreakdown);
   populateHotelOptions();
   document.getElementById('fHotel').value = t.hotel || '';
+  pendingPhotoDataUrl = t.photo || null;
+  document.getElementById('fPhotoInput').value = '';
+  showPhotoPreview(pendingPhotoDataUrl);
 
   document.getElementById('formTitle').textContent = editingId ? 'Edit trip' : 'Log a trip';
   form.style.display = 'block';
@@ -3426,6 +3899,12 @@ document.addEventListener('keydown', e=>{
 let map = null;
 let markerLayer = null;
 let mapRenderGen = 0;
+let mapClusterMode = false;
+let clusterGroup = null;
+document.getElementById('fMapCluster').addEventListener('change', e=>{
+  mapClusterMode = e.target.checked;
+  renderMap();
+});
 
 /* Real road routing for drive trips, via OSRM's free public routing API (no
    key needed). Flights are reasonably straight lines in reality so those
@@ -3506,6 +3985,12 @@ function initMapIfNeeded(){
 function renderMap(){
   if(!map) return;
   markerLayer.clearLayers();
+  if(clusterGroup){ map.removeLayer(clusterGroup); clusterGroup = null; }
+  const clusterAvailable = mapClusterMode && typeof L.markerClusterGroup === 'function';
+  if(clusterAvailable){
+    clusterGroup = L.markerClusterGroup();
+    clusterGroup.addTo(map);
+  }
 
   const bounds = [];
   const home = settings.home;
@@ -3631,7 +4116,7 @@ function renderMap(){
       })
       .join('<hr style="margin:6px 0;border:none;border-top:1px solid #ddd0ac;">');
     marker.bindPopup(popupHtml);
-    marker.addTo(markerLayer);
+    if(clusterAvailable){ clusterGroup.addLayer(marker); } else { marker.addTo(markerLayer); }
     if(anyUpcoming && anyPast){
       // mixed group: small indicator ring
       marker.setStyle({ weight:3 });
