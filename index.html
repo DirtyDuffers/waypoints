@@ -241,6 +241,12 @@
   .port-row{display:flex; gap:8px; align-items:flex-start; margin-bottom:8px;}
   .port-row .lp-wrap{flex:1;}
   .port-row .btn-rust{flex-shrink:0; margin-top:2px;}
+  .lp-quickpicks{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;}
+  .lp-quickpick-btn{
+    background:var(--paper-alt); border:1px solid var(--line); color:var(--ink);
+    padding:5px 10px; border-radius:14px; font-size:.76rem; cursor:pointer;
+  }
+  .lp-quickpick-btn:hover{background:var(--teal); color:#fff; border-color:var(--teal-dark);}
   .lp-results{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:160px; overflow-y:auto; background:var(--card); display:none;}
   .lp-results div{padding:7px 10px; cursor:pointer; font-size:.85rem; border-bottom:1px solid var(--line);}
   .lp-results div:last-child{border-bottom:none;}
@@ -352,17 +358,14 @@
 
   .passport-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:18px 14px; padding:10px 0;}
   .passport-stamp{
-    aspect-ratio:1; border-radius:50%; border:2.5px dashed var(--teal-dark);
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background:var(--card); padding:8px; text-align:center; cursor:default;
+    aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+    padding:6px; cursor:default;
   }
-  .passport-stamp:nth-child(3n+1){transform:rotate(-6deg);}
-  .passport-stamp:nth-child(3n+2){transform:rotate(4deg); border-color:var(--gold-dark);}
-  .passport-stamp:nth-child(3n){transform:rotate(-3deg); border-color:var(--rust);}
-  .passport-stamp .stamp-flag{font-size:1.6rem; line-height:1;}
-  .passport-stamp .stamp-place{font-family:'Fraunces',serif; font-weight:600; font-size:.72rem; margin-top:3px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
-  .passport-stamp .stamp-date{font-family:'JetBrains Mono',monospace; font-size:.6rem; color:var(--ink-soft); margin-top:2px;}
-  .passport-stamp.upcoming{opacity:.55; border-style:dotted;}
+  .passport-stamp:nth-child(4n+1){transform:rotate(-6deg);}
+  .passport-stamp:nth-child(4n+2){transform:rotate(4deg);}
+  .passport-stamp:nth-child(4n+3){transform:rotate(-3deg);}
+  .passport-stamp:nth-child(4n){transform:rotate(2deg);}
+  .passport-stamp.upcoming{opacity:.5;}
 
   .firsts-timeline{position:relative; padding-left:34px;}
   .firsts-timeline::before{content:""; position:absolute; left:14px; top:6px; bottom:6px; width:2px; background:var(--line);}
@@ -1548,12 +1551,37 @@ function effectiveContinent(trip){
    Used for: home base, cruise ports, cruise-linked airports.
    Returns {name, lat, lng, country, countryCode}
 --------------------------------------------------------------- */
-function createLocationPicker(rootEl, placeholder, initialValue){
+const UK_AIRPORTS = [
+  { name:'Heathrow (LHR)', lat:51.4700, lng:-0.4543 },
+  { name:'Gatwick (LGW)', lat:51.1537, lng:-0.1821 },
+  { name:'Manchester (MAN)', lat:53.3537, lng:-2.2750 },
+  { name:'Liverpool John Lennon (LPL)', lat:53.3336, lng:-2.8497 },
+  { name:'Luton (LTN)', lat:51.8747, lng:-0.3683 },
+  { name:'Stansted (STN)', lat:51.8860, lng:0.2389 },
+  { name:'Birmingham (BHX)', lat:52.4539, lng:-1.7480 },
+  { name:'Edinburgh (EDI)', lat:55.9500, lng:-3.3725 },
+  { name:'Glasgow (GLA)', lat:55.8642, lng:-4.4331 },
+  { name:'Bristol (BRS)', lat:51.3827, lng:-2.7191 },
+  { name:'East Midlands (EMA)', lat:52.8311, lng:-1.3281 },
+  { name:'Newcastle (NCL)', lat:55.0375, lng:-1.6917 },
+  { name:'Leeds Bradford (LBA)', lat:53.8659, lng:-1.6606 },
+  { name:'Belfast International (BFS)', lat:54.6575, lng:-6.2158 },
+  { name:'Belfast City (BHD)', lat:54.6181, lng:-5.8725 },
+  { name:'Cardiff (CWL)', lat:51.3967, lng:-3.3433 },
+  { name:'London City (LCY)', lat:51.5053, lng:0.0553 },
+  { name:'Southampton (SOU)', lat:50.9503, lng:-1.3568 },
+  { name:'Aberdeen (ABZ)', lat:57.2019, lng:-2.1978 },
+  { name:'London Southend (SEN)', lat:51.5714, lng:0.6956 },
+].map(a => ({ ...a, country:'United Kingdom', countryCode:'gb' }));
+
+function createLocationPicker(rootEl, placeholder, initialValue, quickPicks){
+  quickPicks = quickPicks || [];
   rootEl.innerHTML = `
     <div class="search-row">
       <input type="text" class="lp-input" placeholder="${escapeHtml(placeholder)}">
       <button type="button" class="btn btn-teal lp-search">Search</button>
     </div>
+    ${quickPicks.length ? `<div class="lp-quickpicks">${quickPicks.map((qp,i)=>`<button type="button" class="lp-quickpick-btn" data-idx="${i}">${escapeHtml(qp.name)}</button>`).join('')}</div>` : ''}
     <div class="lp-results"></div>
     <div class="lp-selected"></div>
   `;
@@ -1566,6 +1594,17 @@ function createLocationPicker(rootEl, placeholder, initialValue){
 
   function renderSelected(){
     selectedEl.textContent = value ? ('📍 ' + value.name + (value.country ? ', ' + value.country : '')) : '';
+  }
+
+  if(quickPicks.length){
+    rootEl.querySelectorAll('.lp-quickpick-btn').forEach(qbtn=>{
+      qbtn.addEventListener('click', ()=>{
+        const qp = quickPicks[parseInt(qbtn.dataset.idx, 10)];
+        value = { name: qp.name, lat: qp.lat, lng: qp.lng, country: qp.country, countryCode: qp.countryCode };
+        renderSelected();
+        if(onChangeCb) onChangeCb(value);
+      });
+    });
   }
 
   async function search(){
@@ -2047,14 +2086,14 @@ document.getElementById('goToSettingsFromForm').addEventListener('click', ()=> s
    FLIGHT / CRUISE TOGGLES + CRUISE PORT PICKERS
 --------------------------------------------------------------- */
 const startPortPicker = createLocationPicker(document.getElementById('lpStartPort'), 'Search for the embarkation port');
-const customBasePicker = createLocationPicker(document.getElementById('lpCustomBase'), "Search for where you were actually travelling from");
+const customBasePicker = createLocationPicker(document.getElementById('lpCustomBase'), "Search for where you were actually travelling from", null, UK_AIRPORTS);
 document.getElementById('fUseCustomBase').addEventListener('change', (e)=>{
   document.getElementById('customBasePanel').style.display = e.target.checked ? 'block' : 'none';
   if(!e.target.checked) customBasePicker.clear();
 });
 const endPortPicker = createLocationPicker(document.getElementById('lpEndPort'), 'Search for the disembarkation port');
-const departureAirportPicker = createLocationPicker(document.getElementById('lpDepartureAirport'), 'Search for the outbound airport');
-const arrivalAirportPicker = createLocationPicker(document.getElementById('lpArrivalAirport'), 'Search for the return airport');
+const departureAirportPicker = createLocationPicker(document.getElementById('lpDepartureAirport'), 'Search for the outbound airport', null, UK_AIRPORTS);
+const arrivalAirportPicker = createLocationPicker(document.getElementById('lpArrivalAirport'), 'Search for the return airport', null, UK_AIRPORTS);
 let betweenPorts = []; // {wrapper, picker}
 
 function addBetweenPortRow(initialValue){
@@ -2921,6 +2960,96 @@ document.addEventListener('click', e=>{
   showRecapModal(name, 'Adventures together', computeCompanionRows(name), 'companion-' + name.toLowerCase().replace(/[^a-z0-9]+/g,'-'));
 });
 
+/* ---------------------------------------------------------------
+   PASSPORT STAMP GENERATOR
+   Real stamps are single-ink, come in several house shapes, and
+   usually curve the country name around the rim with the date along
+   the bottom. Each trip's stamp is deterministic (based on its id),
+   so it looks the same every time rather than re-rolling on render.
+--------------------------------------------------------------- */
+const STAMP_INK_COLORS = ['#a34a3a', '#1c2b3a', '#2a4f52', '#6b5b95', '#7a4a00', '#3c6e71'];
+const STAMP_SHAPES = ['circle', 'oval', 'double-circle', 'hex', 'rect'];
+
+function hashString(str){
+  let h = 0;
+  for(let i=0; i<str.length; i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+function hexPoints(cx, cy, r){
+  const pts = [];
+  for(let i=0; i<6; i++){
+    const angle = Math.PI/180 * (60*i - 30);
+    pts.push(`${(cx+r*Math.cos(angle)).toFixed(1)},${(cy+r*Math.sin(angle)).toFixed(1)}`);
+  }
+  return pts.join(' ');
+}
+function cutRectPoints(cx, cy, w, h, cut){
+  const x0=cx-w/2, x1=cx+w/2, y0=cy-h/2, y1=cy+h/2;
+  return [
+    `${x0+cut},${y0}`, `${x1-cut},${y0}`, `${x1},${y0+cut}`, `${x1},${y1-cut}`,
+    `${x1-cut},${y1}`, `${x0+cut},${y1}`, `${x0},${y1-cut}`, `${x0},${y0+cut}`
+  ].join(' ');
+}
+
+function buildStampSvg(trip){
+  const seed = hashString(trip.id);
+  const color = STAMP_INK_COLORS[seed % STAMP_INK_COLORS.length];
+  const shape = STAMP_SHAPES[Math.floor(seed/7) % STAMP_SHAPES.length];
+  const country = (trip.country || effectiveContinent(trip) || 'UNKNOWN').toUpperCase();
+  const place = trip.place.toUpperCase();
+  const date = new Date(trip.startDate+'T00:00:00').toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
+  const flag = flagForTrip(trip);
+  const uid = 'stamp' + seed + '-' + trip.id.replace(/[^a-z0-9]/gi,'');
+  const W = 140, H = 140, cx = W/2, cy = H/2;
+  let inner = '';
+
+  if(shape === 'circle' || shape === 'double-circle'){
+    const r = 58;
+    const topPath = `M ${cx-r},${cy} A ${r},${r} 0 0 1 ${cx+r},${cy}`;
+    const botPath = `M ${cx-r},${cy} A ${r},${r} 0 0 0 ${cx+r},${cy}`;
+    inner = `
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="3" stroke-dasharray="14,3,7,3"/>
+      ${shape==='double-circle' ? `<circle cx="${cx}" cy="${cy}" r="${r-9}" fill="none" stroke="${color}" stroke-width="1.5"/>` : ''}
+      <path id="${uid}t" d="${topPath}" fill="none"/>
+      <path id="${uid}b" d="${botPath}" fill="none"/>
+      <text font-size="9.5" font-weight="700" letter-spacing="1.4" fill="${color}"><textPath href="#${uid}t" startOffset="50%" text-anchor="middle">${escapeHtml(country.slice(0,24))}</textPath></text>
+      <text font-size="8.5" font-weight="600" letter-spacing="1" fill="${color}"><textPath href="#${uid}b" startOffset="50%" text-anchor="middle">${escapeHtml(date)}</textPath></text>
+      ${flag ? `<text x="${cx}" y="${cy-2}" font-size="20" text-anchor="middle">${flag}</text>
+      <text x="${cx}" y="${cy+18}" font-size="9" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,16))}</text>`
+      : `<text x="${cx}" y="${cy+7}" font-size="15" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>`}
+    `;
+  }else if(shape === 'oval'){
+    const rx = 62, ry = 44;
+    const topPath = `M ${cx-rx},${cy} A ${rx},${ry} 0 0 1 ${cx+rx},${cy}`;
+    const botPath = `M ${cx-rx},${cy} A ${rx},${ry} 0 0 0 ${cx+rx},${cy}`;
+    inner = `
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="${color}" stroke-width="2.5"/>
+      <path id="${uid}t" d="${topPath}" fill="none"/>
+      <path id="${uid}b" d="${botPath}" fill="none"/>
+      <text font-size="9" font-weight="700" letter-spacing="1.2" fill="${color}"><textPath href="#${uid}t" startOffset="50%" text-anchor="middle">${escapeHtml(country.slice(0,22))}</textPath></text>
+      <text font-size="8" font-weight="600" letter-spacing="1" fill="${color}"><textPath href="#${uid}b" startOffset="50%" text-anchor="middle">${escapeHtml(date)}</textPath></text>
+      <text x="${cx}" y="${cy+6}" font-size="14" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
+    `;
+  }else if(shape === 'hex'){
+    inner = `
+      <polygon points="${hexPoints(cx,cy,58)}" fill="none" stroke="${color}" stroke-width="3"/>
+      <text x="${cx}" y="${cy-26}" font-size="8.5" font-weight="700" text-anchor="middle" fill="${color}" letter-spacing="1">${escapeHtml(country.slice(0,18))}</text>
+      <text x="${cx}" y="${cy+2}" font-size="14" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
+      <line x1="${cx-30}" y1="${cy+12}" x2="${cx+30}" y2="${cy+12}" stroke="${color}" stroke-width="1"/>
+      <text x="${cx}" y="${cy+26}" font-size="8.5" text-anchor="middle" fill="${color}" letter-spacing="0.5">${escapeHtml(date)}</text>
+    `;
+  }else{ // rect
+    inner = `
+      <polygon points="${cutRectPoints(cx,cy,108,84,14)}" fill="none" stroke="${color}" stroke-width="3"/>
+      <text x="${cx}" y="${cy-22}" font-size="8.5" font-weight="700" text-anchor="middle" fill="${color}" letter-spacing="1">${escapeHtml(country.slice(0,18))}</text>
+      <text x="${cx}" y="${cy+4}" font-size="15" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
+      <text x="${cx}" y="${cy+26}" font-size="8.5" text-anchor="middle" fill="${color}" letter-spacing="0.5">${escapeHtml(date)}</text>
+    `;
+  }
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="overflow:visible;">${inner}</svg>`;
+}
+
 function renderPassport(){
   const grid = document.getElementById('passportGrid');
   const summary = document.getElementById('passportSummary');
@@ -2931,18 +3060,11 @@ function renderPassport(){
   }
   const sorted = [...trips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
   summary.textContent = `${sorted.length} stamp${sorted.length!==1?'s':''}, in order`;
-  grid.innerHTML = sorted.map(t=>{
-    const flag = flagForTrip(t) || '📍';
-    const date = new Date(t.startDate+'T00:00:00');
-    const dateLabel = date.toLocaleString('en', {month:'short', year:'numeric'});
-    return `
-      <div class="passport-stamp${isUpcoming(t)?' upcoming':''}" title="${escapeAttr(t.place)} — ${t.startDate}">
-        <div class="stamp-flag">${flag}</div>
-        <div class="stamp-place">${escapeHtml(t.place)}</div>
-        <div class="stamp-date">${dateLabel}</div>
-      </div>
-    `;
-  }).join('');
+  grid.innerHTML = sorted.map(t=>`
+    <div class="passport-stamp${isUpcoming(t)?' upcoming':''}" title="${escapeAttr(t.place)} — ${t.startDate}">
+      ${buildStampSvg(t)}
+    </div>
+  `).join('');
 }
 
 function renderCountryChecklist(){
