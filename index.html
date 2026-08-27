@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+  // Applied before any CSS renders, so there's no flash of the wrong theme
+  // while the rest of the app loads.
+  (function(){
+    try{
+      var s = JSON.parse(localStorage.getItem('waypoints.settings.v1'));
+      if(s && s.darkMode) document.documentElement.dataset.theme = 'dark';
+    }catch(e){}
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Waypoints — Travel Log</title>
 
@@ -34,6 +44,20 @@
     --line:#ddd0ac;
     --radius:10px;
   }
+  html[data-theme="dark"]{
+    --ink:#e9e4d8;
+    --ink-soft:#a19c8f;
+    --paper:#171f28;
+    --paper-alt:#212b36;
+    --card:#1c2733;
+    --teal:#5b9a9e;
+    --teal-dark:#3c6e71;
+    --gold:#d9b64a;
+    --gold-dark:#c9a227;
+    --rust:#c17d6f;
+    --line:#37424e;
+  }
+  body{transition:background-color .2s, color .2s;}
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
@@ -47,14 +71,14 @@
 
   header.top{
     display:flex; align-items:center; justify-content:space-between;
-    padding:14px 20px; background:var(--ink); color:var(--paper);
+    padding:14px 20px; background:#1c2b3a; color:#f6f1e4;
     position:sticky; top:0; z-index:500;
   }
-  header.top h1{color:var(--paper); font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:9px;}
+  header.top h1{color:#f6f1e4; font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:9px;}
   header.top h1 img{width:28px; height:28px; border-radius:8px; display:block;}
   nav.tabs{display:flex; gap:4px;}
   nav.tabs button{
-    background:none; border:none; color:var(--paper); opacity:.6;
+    background:none; border:none; color:#f6f1e4; opacity:.6;
     font-family:'Inter',sans-serif; font-size:.95rem; font-weight:500;
     padding:8px 14px; border-radius:20px; cursor:pointer; transition:.15s;
   }
@@ -84,7 +108,7 @@
   label{font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); font-weight:600;}
   input, textarea, select{
     font-family:'Inter',sans-serif; font-size:.95rem; padding:8px 10px;
-    border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--ink);
+    border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--ink);
   }
   input:focus, textarea:focus, select:focus{outline:2px solid var(--teal); outline-offset:1px;}
   textarea{resize:vertical; min-height:60px;}
@@ -106,7 +130,7 @@
   .btn-rust{background:none; color:var(--rust); border:1px solid var(--rust);}
   .btn-rust:hover{background:var(--rust); color:#fff;}
 
-  #geoResults{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:180px; overflow-y:auto; background:#fff; display:none;}
+  #geoResults{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:180px; overflow-y:auto; background:var(--card); display:none;}
   #geoResults div{padding:8px 10px; cursor:pointer; font-size:.9rem; border-bottom:1px solid var(--line);}
   #geoResults div:last-child{border-bottom:none;}
   #geoResults div:hover{background:var(--paper-alt);}
@@ -119,6 +143,9 @@
   .section-title h2{font-size:1.15rem;}
   .section-title .count{font-family:'JetBrains Mono',monospace; font-size:.8rem; color:var(--ink-soft);}
   .empty-note{color:var(--ink-soft); font-size:.9rem; padding:14px 0;}
+  .empty-state{text-align:center; padding:32px 16px; color:var(--ink-soft);}
+  .empty-state .empty-icon{font-size:2.6rem; display:block; margin-bottom:10px; opacity:.7;}
+  .empty-state .empty-text{font-size:.9rem;}
 
   .trip-card{
     background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
@@ -127,6 +154,10 @@
   }
   .trip-card.upcoming{border-left:4px solid var(--gold);}
   .trip-card.past{border-left:4px solid var(--teal);}
+  .trip-thumb{
+    width:60px; height:60px; border-radius:8px; object-fit:cover; flex-shrink:0;
+    border:1px solid var(--line); background:var(--paper-alt);
+  }
   .trip-main{flex:1; min-width:0;}
   .trip-main h3{font-size:1.05rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
   .stamp{
@@ -137,6 +168,14 @@
   }
   .trip-meta{font-size:.82rem; color:var(--ink-soft); margin-top:2px; display:flex; gap:10px; flex-wrap:wrap;}
   .trip-notes{font-size:.88rem; margin-top:8px; color:var(--ink); white-space:pre-wrap;}
+  .packing-toggle{font-size:.78rem; color:var(--teal-dark); cursor:pointer; margin-top:8px; font-weight:600; display:inline-block;}
+  .packing-panel{margin-top:8px; padding:10px; background:var(--paper-alt); border-radius:8px;}
+  .packing-item{display:flex; align-items:center; gap:8px; font-size:.85rem; padding:3px 0;}
+  .packing-item span{flex:1;}
+  .packing-item span.packed{text-decoration:line-through; color:var(--ink-soft);}
+  .packing-item button{background:none; border:none; color:var(--rust); cursor:pointer; font-size:.9rem;}
+  .packing-add-row{display:flex; gap:6px; margin-top:8px;}
+  .packing-add-row input{flex:1; font-size:.85rem; padding:6px 8px;}
   .trip-actions{display:flex; flex-direction:column; gap:6px;}
   .trip-actions button{font-size:.75rem; padding:5px 10px;}
 
@@ -200,7 +239,7 @@
   .port-row{display:flex; gap:8px; align-items:flex-start; margin-bottom:8px;}
   .port-row .lp-wrap{flex:1;}
   .port-row .btn-rust{flex-shrink:0; margin-top:2px;}
-  .lp-results{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:160px; overflow-y:auto; background:#fff; display:none;}
+  .lp-results{border:1px solid var(--line); border-radius:6px; margin-top:6px; max-height:160px; overflow-y:auto; background:var(--card); display:none;}
   .lp-results div{padding:7px 10px; cursor:pointer; font-size:.85rem; border-bottom:1px solid var(--line);}
   .lp-results div:last-child{border-bottom:none;}
   .lp-results div:hover{background:var(--paper-alt);}
@@ -216,7 +255,7 @@
   .about-card p{font-size:.88rem; line-height:1.5; color:var(--ink); margin:0 0 6px;}
   .about-version{text-align:center; font-family:'JetBrains Mono',monospace; font-size:.8rem; color:var(--ink-soft); margin:18px 0 4px;}
   .coffee-btn{
-    display:inline-flex; align-items:center; gap:8px; background:var(--gold); color:var(--ink);
+    display:inline-flex; align-items:center; gap:8px; background:var(--gold); color:#1c2b3a;
     padding:10px 18px; border-radius:24px; text-decoration:none; font-weight:600; font-size:.9rem;
   }
   .coffee-btn:hover{background:var(--gold-dark); color:#fff;}
@@ -240,17 +279,26 @@
     .trip-actions{flex-direction:row;}
   }
 
+  @media print{
+    header.top, .add-bar, .quick-filter-row, .date-range-row, #tripForm, .trip-actions,
+    nav.tabs, .link-btn, .back-link, .countdown-banner, #onThisDay, .overlap-warning,
+    #undoToast, .wrapped-overlay, footer, #shareAllTimeBtn { display:none !important; }
+    body{background:#fff; color:#000;}
+    .trip-card{break-inside:avoid; border:1px solid #ccc !important; background:#fff !important;}
+    main{max-width:none;}
+  }
+
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important;}
   }
 
   .undo-toast{
     position:fixed; bottom:20px; left:50%; transform:translateX(-50%);
-    background:var(--ink); color:var(--paper); padding:12px 16px; border-radius:10px;
+    background:#1c2b3a; color:#f6f1e4; padding:12px 16px; border-radius:10px;
     display:flex; align-items:center; gap:16px; box-shadow:0 4px 16px rgba(0,0,0,.25); z-index:1000;
     font-size:.88rem; max-width:90vw;
   }
-  .undo-toast button{background:var(--gold); color:var(--ink); border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; flex-shrink:0;}
+  .undo-toast button{background:#c9a227; color:#1c2b3a; border:none; padding:6px 12px; border-radius:6px; font-weight:700; cursor:pointer; flex-shrink:0;}
 
   .group-card{
     background:var(--paper-alt); border:1px solid var(--line); border-radius:var(--radius);
@@ -270,6 +318,28 @@
     padding:8px 12px; font-size:.8rem; margin-bottom:10px;
   }
 
+  .countdown-banner{
+    background:var(--teal); color:#fff; border-radius:var(--radius); padding:12px 16px;
+    margin-bottom:14px; text-align:center; font-size:.9rem; font-weight:600;
+  }
+  .reminder-banner{
+    background:var(--gold); color:#1c2b3a; border-radius:var(--radius); padding:12px 16px;
+    margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; font-size:.85rem;
+  }
+  .reminder-banner button{background:#1c2b3a; color:#fff; border:none; padding:6px 12px; border-radius:6px; font-weight:600; cursor:pointer; flex-shrink:0;}
+  .quick-filter-row{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:12px;}
+  .quick-filter-chip{
+    background:var(--card); border:1px solid var(--line); color:var(--ink-soft);
+    padding:6px 12px; border-radius:16px; font-size:.8rem; cursor:pointer; font-weight:600;
+  }
+  .quick-filter-chip.active{background:var(--teal); color:#fff; border-color:var(--teal-dark);}
+  .date-range-row{display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:.85rem; color:var(--ink-soft);}
+  .date-range-row input{max-width:150px;}
+  .compare-table{width:100%; border-collapse:collapse; font-size:.85rem;}
+  .compare-table th{text-align:center; font-family:'JetBrains Mono',monospace; padding:6px 4px; border-bottom:2px solid var(--line);}
+  .compare-table td{padding:7px 4px; border-bottom:1px solid var(--line); text-align:center;}
+  .compare-table td:first-child, .compare-table th:first-child{text-align:left; color:var(--ink-soft);}
+  .compare-table .compare-winner{font-weight:700; color:var(--teal-dark);}
   .otd-callout{
     background:var(--card); border:2px dashed var(--gold); border-radius:var(--radius);
     padding:14px 16px; margin-bottom:14px; text-align:center;
@@ -277,6 +347,20 @@
   .otd-callout .otd-title{font-family:'Fraunces',serif; font-size:1.05rem; margin-bottom:4px;}
 
   .badge-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:14px;}
+
+  .passport-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:18px 14px; padding:10px 0;}
+  .passport-stamp{
+    aspect-ratio:1; border-radius:50%; border:2.5px dashed var(--teal-dark);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--card); padding:8px; text-align:center; cursor:default;
+  }
+  .passport-stamp:nth-child(3n+1){transform:rotate(-6deg);}
+  .passport-stamp:nth-child(3n+2){transform:rotate(4deg); border-color:var(--gold-dark);}
+  .passport-stamp:nth-child(3n){transform:rotate(-3deg); border-color:var(--rust);}
+  .passport-stamp .stamp-flag{font-size:1.6rem; line-height:1;}
+  .passport-stamp .stamp-place{font-family:'Fraunces',serif; font-weight:600; font-size:.72rem; margin-top:3px; line-height:1.15; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;}
+  .passport-stamp .stamp-date{font-family:'JetBrains Mono',monospace; font-size:.6rem; color:var(--ink-soft); margin-top:2px;}
+  .passport-stamp.upcoming{opacity:.55; border-style:dotted;}
   .milestone-badge{
     text-align:center; padding:10px 4px; border-radius:50%; aspect-ratio:1;
     display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -334,6 +418,11 @@
   .country-chip .country-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .country-chip .country-count{font-family:'JetBrains Mono',monospace; font-weight:700; flex-shrink:0;}
 
+  .visits-mode-btn{
+    background:none; border:none; padding:6px 14px; font-size:.8rem; font-weight:600; cursor:pointer; color:var(--ink-soft);
+  }
+  .visits-mode-btn.active{background:var(--teal); color:#fff;}
+
   .wrapped-overlay{
     position:fixed; inset:0; background:rgba(28,43,58,.88);
     display:none; align-items:center; justify-content:center; z-index:2000; padding:20px;
@@ -377,8 +466,34 @@
       <button id="addTripBtn">+ Log a trip</button>
     </div>
 
+    <div class="quick-filter-row" id="quickFilterRow">
+      <button class="quick-filter-chip" data-filter="isFlight">✈️ Flights</button>
+      <button class="quick-filter-chip" data-filter="isCruise">🚢 Cruises</button>
+      <button class="quick-filter-chip" data-filter="isDrive">🚗 Drives</button>
+      <button class="quick-filter-chip" data-filter="isTrain">🚆 Trains</button>
+      <button class="quick-filter-chip" data-filter="isBoat">🚤 Boats</button>
+      <button class="quick-filter-chip" data-filter="thisYear">📅 This year</button>
+      <button class="link-btn" id="toggleDateRangeBtn" style="margin-left:4px;">📆 Date range</button>
+    </div>
+    <div class="date-range-row" id="dateRangeRow" style="display:none;">
+      <input type="date" id="filterDateFrom">
+      <span>to</span>
+      <input type="date" id="filterDateTo">
+      <button class="btn btn-ghost" id="clearDateRangeBtn" type="button">Clear</button>
+    </div>
+
     <div class="panel" id="tripForm" style="display:none;">
       <h2 id="formTitle" style="font-size:1.1rem;">Log a trip</h2>
+
+      <div class="form-row" id="templateRow">
+        <div class="form-field full">
+          <label>Start from a template</label>
+          <div class="search-row">
+            <select id="templateSelect"><option value="">— None —</option></select>
+            <button class="btn btn-ghost" id="applyTemplateBtn" type="button">Apply</button>
+          </div>
+        </div>
+      </div>
 
       <div class="form-row">
         <div class="form-field full">
@@ -491,6 +606,14 @@
 
       <div class="form-row">
         <div class="form-field full">
+          <label>Where you stayed 🏨</label>
+          <input type="text" id="fHotel" list="hotelOptions" placeholder="e.g. Hotel Ibis, Mum's house, Airbnb in the old town">
+          <datalist id="hotelOptions"></datalist>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
           <label>Tags 🏷️</label>
           <input type="text" id="fTags" list="tagOptions" placeholder="e.g. beach, family, work — separate with commas">
           <datalist id="tagOptions"></datalist>
@@ -498,6 +621,27 @@
         <div class="form-field">
           <label id="fCostLabel">Cost / budget</label>
           <input type="number" step="any" min="0" id="fCost" placeholder="optional">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-field full">
+          <button type="button" class="link-btn" id="toggleCostBreakdownBtn">🔍 Break down cost by category</button>
+          <div class="sub-panel" id="costBreakdownPanel" style="display:none;">
+            <h4>Cost by category</h4>
+            <p style="font-size:.8rem; color:var(--ink-soft); margin-top:-4px;">If any of these are filled in, their total is used instead of the single cost above.</p>
+            <div class="form-row">
+              <div class="form-field"><label>✈️ Flights</label><input type="number" step="any" min="0" id="fCostFlights"></div>
+              <div class="form-field"><label>🏨 Accommodation</label><input type="number" step="any" min="0" id="fCostAccommodation"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-field"><label>🍽️ Food</label><input type="number" step="any" min="0" id="fCostFood"></div>
+              <div class="form-field"><label>🎟️ Activities</label><input type="number" step="any" min="0" id="fCostActivities"></div>
+            </div>
+            <div class="form-row">
+              <div class="form-field"><label>💳 Other</label><input type="number" step="any" min="0" id="fCostOther"></div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -595,13 +739,16 @@
       </div>
 
       <div class="form-actions">
+        <button class="btn btn-ghost" id="saveAsTemplateBtn" type="button">💾 Save as template</button>
         <button class="btn btn-ghost" id="cancelForm" type="button">Cancel</button>
         <button class="btn btn-teal" id="saveTrip" type="button">Save trip</button>
       </div>
     </div>
 
-    <div id="onThisDay"></div>
-    <div id="overlapWarnings"></div>
+    <div id="countdownBanner" aria-live="polite"></div>
+    <div id="reminderBanner" aria-live="polite"></div>
+    <div id="onThisDay" aria-live="polite"></div>
+    <div id="overlapWarnings" aria-live="polite"></div>
 
     <div class="section-title"><h2>Upcoming</h2><span class="count mono" id="upcomingCount"></span></div>
     <div id="upcomingList"></div>
@@ -617,8 +764,12 @@
       <span><span class="swatch past"></span>Been there</span>
       <span><span class="swatch upcoming"></span>Upcoming</span>
       <span>🏠 Home</span>
-      <span>✈️ ┈┈ Flight path</span>
+      <span>✈️ Flight</span>
+      <span>🚗 Drive</span>
+      <span>🚆 Train</span>
+      <span>🚤 Boat</span>
       <span>🚢 Cruise route</span>
+      <span>📍 Custom base</span>
       <span>✨ Wishlist</span>
     </div>
   </section>
@@ -652,8 +803,10 @@
 
   <!-- STATS VIEW -->
   <section id="view-stats" class="view">
-    <div style="text-align:right; margin-bottom:8px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+      <button class="link-btn" id="shareAllTimeBtn">📤 Share my stats</button>
       <button class="link-btn" data-view="countries">🌍 Country checklist</button>
+      <button class="link-btn" data-view="passport">🛂 Passport</button>
     </div>
     <div class="stat-grid" id="statGrid"></div>
 
@@ -667,13 +820,38 @@
       <select id="wrappedYearSelect" style="max-width:140px; margin-right:8px;"></select>
       <button class="btn btn-teal" id="viewWrappedBtn" type="button">View recap</button>
     </div>
+    <div class="breakdown" style="text-align:center;">
+      <h3>👥 Companion recap</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">See everywhere you've been with one person.</p>
+      <select id="companionWrappedSelect" style="max-width:160px; margin-right:8px;"></select>
+      <button class="btn btn-teal" id="viewCompanionWrappedBtn" type="button">View recap</button>
+    </div>
+    <div class="breakdown" style="text-align:center;">
+      <h3>⚖️ Compare two years</h3>
+      <select id="compareYearA" style="max-width:110px;"></select>
+      <span style="margin:0 6px;">vs</span>
+      <select id="compareYearB" style="max-width:110px;"></select>
+      <button class="btn btn-teal" id="compareYearsBtn" type="button" style="margin-left:8px;">Compare</button>
+      <div id="compareYearsResult" style="margin-top:14px; text-align:left;"></div>
+    </div>
     <div class="breakdown">
       <h3>📈 Distance over time</h3>
       <div id="chartDistanceTime" class="chart-container"></div>
     </div>
     <div class="breakdown">
+      <h3>📏 Average trip length over time</h3>
+      <div id="chartAvgLength" class="chart-container"></div>
+    </div>
+    <div class="breakdown">
       <h3>🗓️ Trips by month</h3>
       <div id="chartMonthHeatmap" class="chart-container"></div>
+    </div>
+    <div class="breakdown">
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin-bottom:0;">📅 Days travelled calendar</h3>
+        <select id="calendarYearSelect" style="max-width:110px;"></select>
+      </div>
+      <div id="chartCalendarHeatmap" class="chart-container" style="margin-top:10px;"></div>
     </div>
     <div class="breakdown">
       <h3>🚦 How you travel</h3>
@@ -689,8 +867,14 @@
     </div>
 
     <div class="breakdown">
-      <h3>🏆 Visits per place</h3>
-      <div id="visitsBreakdown"></div>
+      <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+        <h3 style="margin-bottom:0;">🏆 Visits per <span id="visitsModeLabel">place</span></h3>
+        <div style="display:flex; gap:0; border:1px solid var(--line); border-radius:20px; overflow:hidden;">
+          <button class="visits-mode-btn active" data-mode="city" type="button">Cities</button>
+          <button class="visits-mode-btn" data-mode="country" type="button">Countries</button>
+        </div>
+      </div>
+      <div id="visitsBreakdown" style="margin-top:10px;"></div>
     </div>
     <div class="breakdown">
       <h3>👥 Travelled with most</h3>
@@ -712,6 +896,10 @@
       <h3>💰 Spend per year</h3>
       <div id="spendBreakdown"></div>
     </div>
+    <div class="breakdown">
+      <h3>💳 Spend by category</h3>
+      <div id="spendCategoryBreakdown"></div>
+    </div>
   </section>
 
   <!-- COUNTRIES VIEW -->
@@ -722,6 +910,16 @@
       <div class="tagline" id="countriesSummary"></div>
     </div>
     <div id="continentAccordion"></div>
+  </section>
+
+  <!-- PASSPORT VIEW -->
+  <section id="view-passport" class="view">
+    <button class="back-link" data-view="stats">← Back to Stats</button>
+    <div class="about-hero" style="padding-top:4px;">
+      <h2 style="font-size:1.3rem;">🛂 Passport</h2>
+      <div class="tagline" id="passportSummary"></div>
+    </div>
+    <div class="passport-grid" id="passportGrid"></div>
   </section>
 
   <!-- ABOUT VIEW -->
@@ -744,13 +942,13 @@
         <span style="display:none;">⚽</span> Also track LFC fixtures?
       </h3>
       <p>The LFC Fixtures app covers every Liverpool result, H2H record, and an away-day trip planner — built the same way, no accounts, no tracking.</p>
-      <a href="https://dirtyduffers.github.io/" target="_blank" rel="noopener" style="display:inline-block; background:var(--teal); color:#fff; font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:10px; text-decoration:none;">Open LFC Fixtures ↗</a>
+      <a href="https://dirtyduffers.github.io/LFC-Fixtures/" target="_blank" rel="noopener" style="display:inline-block; background:var(--teal); color:#fff; font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:10px; text-decoration:none;">Open LFC Fixtures ↗</a>
     </div>
 
     <div class="about-card">
       <h3>🥷 Also have a Ninja appliance?</h3>
       <p>The Ninja Hub covers all three cook guides in one place — Blender, Air Fryer, and Woodfire Grill — with the same tailored, ad-free approach.</p>
-      <a href="https://dirtyduffers.github.io/Ninja-Hub/" target="_blank" rel="noopener" style="display:inline-block; background:var(--gold); color:var(--ink); font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:10px; text-decoration:none;">Open Ninja Hub ↗</a>
+      <a href="https://dirtyduffers.github.io/Ninja-Hub/" target="_blank" rel="noopener" style="display:inline-block; background:var(--gold); color:#1c2b3a; font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:10px; text-decoration:none;">Open Ninja Hub ↗</a>
     </div>
 
     <div class="about-card">
@@ -807,6 +1005,33 @@
     </div>
 
     <div class="panel">
+      <h3 style="font-size:.95rem;">🎨 Appearance</h3>
+      <div class="toggle-group" style="margin:0;">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" id="fDarkMode">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="darkModeToggleLabel">🌞 Light mode</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3 style="font-size:.95rem;">🔔 Post-trip reminders</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">A gentle nudge a few days after a trip ends, to add notes while it's fresh. Only fires while Waypoints is open in a tab — there's no background push without a server.</p>
+      <div class="toggle-group" style="margin:0;">
+        <div class="toggle-row">
+          <label class="toggle-switch">
+            <input type="checkbox" id="fReminders">
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="toggle-label" id="remindersToggleLabel">Off</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
       <h3 style="font-size:.95rem;">📏 Units</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Applies to distances like km-from-home, air miles, and drive miles. Cruises always show nautical miles.</p>
       <div class="toggle-group" style="margin:0 0 14px;">
@@ -823,6 +1048,12 @@
     </div>
 
     <div class="panel">
+      <h3 style="font-size:.95rem;">📋 Trip templates</h3>
+      <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Save a combination of companions, tags, and transport for trips you repeat often — then apply it in one click when logging a new trip.</p>
+      <div class="settings-chip-row" id="templateChips"></div>
+    </div>
+
+    <div class="panel">
       <h3 style="font-size:.95rem;">👥 Travel companions</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Add the people you usually travel with, so you can pick them from a list when logging a trip.</p>
       <div class="search-row">
@@ -836,6 +1067,8 @@
       <h3 style="font-size:.95rem;">💾 Backup &amp; transfer</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Everything is stored only in this browser. Export a backup file to move your log to another device, or as a safety copy.</p>
       <button class="btn btn-teal" id="exportBtn" type="button">⬇️ Export backup</button>
+      <button class="btn btn-ghost" id="exportCsvBtn" type="button">📊 Export as CSV</button>
+      <button class="btn btn-ghost" id="printLogBtn" type="button">🖨️ Print my log</button>
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--line);">
         <label style="display:block; margin-bottom:6px;">Import a backup file</label>
@@ -864,14 +1097,15 @@
   <button id="undoToastBtn" type="button">Undo</button>
 </div>
 
-<div id="wrappedOverlay" class="wrapped-overlay">
+<div id="wrappedOverlay" class="wrapped-overlay" role="dialog" aria-modal="true" aria-label="Recap">
   <div class="wrapped-card">
-    <button class="wrapped-close" id="closeWrappedBtn" type="button">✕</button>
+    <button class="wrapped-close" id="closeWrappedBtn" type="button" aria-label="Close">✕</button>
     <div id="wrappedContent"></div>
+    <button class="btn btn-teal" id="shareWrappedBtn" type="button" style="margin-top:16px; width:100%;">📤 Download / share image</button>
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 <script>
 /* ---------------------------------------------------------------
    DATA LAYER
@@ -911,6 +1145,15 @@ function migrateTrip(t){
   if(typeof t.groupName !== 'string') t.groupName = '';
   if(!Array.isArray(t.tags)) t.tags = [];
   if(typeof t.cost !== 'number' || isNaN(t.cost)) t.cost = null;
+  if(typeof t.hotel !== 'string') t.hotel = '';
+  if(!Array.isArray(t.packing)) t.packing = [];
+  if(t.costBreakdown && typeof t.costBreakdown === 'object'){
+    ['flights','accommodation','food','activities','other'].forEach(k=>{
+      if(typeof t.costBreakdown[k] !== 'number' || isNaN(t.costBreakdown[k])) t.costBreakdown[k] = null;
+    });
+  }else{
+    t.costBreakdown = null;
+  }
   if(typeof t.countryCode !== 'string') t.countryCode = '';
   return t;
 }
@@ -927,9 +1170,11 @@ function loadSettings(){
       home: s.home || null,
       companions: Array.isArray(s.companions) ? s.companions : [],
       unit: (s.unit === 'metric') ? 'metric' : 'imperial',
-      currencySymbol: (typeof s.currencySymbol === 'string' && s.currencySymbol) ? s.currencySymbol : '£'
+      currencySymbol: (typeof s.currencySymbol === 'string' && s.currencySymbol) ? s.currencySymbol : '£',
+      darkMode: s.darkMode === true,
+      remindersEnabled: s.remindersEnabled === true
     };
-  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£' }; }
+  }catch(e){ return { home:null, companions:[], unit:'imperial', currencySymbol:'£', darkMode:false, remindersEnabled:false }; }
 }
 function saveSettings(s){
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
@@ -947,6 +1192,18 @@ function saveWishlist(list){
   localStorage.setItem(WISHLIST_KEY, JSON.stringify(list));
 }
 let wishlist = loadWishlist();
+
+/* ---------------------------------------------------------------
+   TRIP TEMPLATES (saved companion/tag/transport combos)
+--------------------------------------------------------------- */
+const TEMPLATES_KEY = 'waypoints.templates.v1';
+function loadTemplates(){
+  try{ return JSON.parse(localStorage.getItem(TEMPLATES_KEY)) || []; }catch(e){ return []; }
+}
+function saveTemplates(list){
+  localStorage.setItem(TEMPLATES_KEY, JSON.stringify(list));
+}
+let templates = loadTemplates();
 
 /* ---------------------------------------------------------------
    DISTANCE (haversine, great-circle straight-line distance)
@@ -1317,6 +1574,7 @@ function switchView(name){
   if(name === 'settings'){ renderSettingsView(); }
   if(name === 'wishlist'){ renderWishlist(); }
   if(name === 'countries'){ renderCountryChecklist(); }
+  if(name === 'passport'){ renderPassport(); }
   window.scrollTo({top:0});
 }
 document.querySelectorAll('[data-view]').forEach(btn=>{
@@ -1340,7 +1598,7 @@ document.getElementById('cancelForm').addEventListener('click', ()=>{
 });
 
 function clearForm(){
-  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes','fGroupName','fTags','fCost','fCruiseLine','fShipName'].forEach(id=>{
+  ['placeSearch','fPlace','fLat','fLng','fCountry','fCompanionsOther','fNotes','fGroupName','fTags','fCost','fCruiseLine','fShipName','fHotel'].forEach(id=>{
     document.getElementById(id).value = '';
   });
   document.getElementById('fContinent').value = '';
@@ -1366,7 +1624,11 @@ function clearForm(){
   populateGroupNameOptions();
   populateTagOptions();
   populateCruiseLineOptions();
+  populateHotelOptions();
   updateCostLabel();
+  clearCostBreakdownFields();
+  populateTemplateSelect();
+  document.getElementById('templateSelect').value = '';
 }
 
 function populateGroupNameOptions(){
@@ -1380,6 +1642,74 @@ function populateTagOptions(){
   document.getElementById('tagOptions').innerHTML = tags.map(t => `<option value="${escapeAttr(t)}">`).join('');
 }
 
+function populateHotelOptions(){
+  const hotels = [...new Set(trips.map(t=>t.hotel).filter(Boolean))].sort();
+  document.getElementById('hotelOptions').innerHTML = hotels.map(h => `<option value="${escapeAttr(h)}">`).join('');
+}
+
+function populateTemplateSelect(){
+  const sel = document.getElementById('templateSelect');
+  sel.innerHTML = '<option value="">— None —</option>' +
+    templates.map(t => `<option value="${escapeAttr(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+}
+document.getElementById('applyTemplateBtn').addEventListener('click', ()=>{
+  const id = document.getElementById('templateSelect').value;
+  if(!id) return;
+  const tpl = templates.find(t=>t.id === id);
+  if(!tpl) return;
+  renderCompanionCheckboxes(tpl.companions || []);
+  document.getElementById('fCompanionsOther').value = tpl.companionsOther || '';
+  document.getElementById('fTags').value = (tpl.tags || []).join(', ');
+  document.getElementById('fHotel').value = tpl.hotel || '';
+  document.getElementById('fIsFlight').checked = !!tpl.isFlight;
+  document.getElementById('fIsDrive').checked = !!tpl.isDrive;
+  document.getElementById('fIsTrain').checked = !!tpl.isTrain;
+  document.getElementById('fIsBoat').checked = !!tpl.isBoat;
+  // Cruise is deliberately excluded — ports/ship details are too trip-specific to templatize.
+});
+document.getElementById('saveAsTemplateBtn').addEventListener('click', ()=>{
+  const name = prompt('Name this template (e.g. "Annual family villa trip"):');
+  if(!name || !name.trim()) return;
+  const tpl = {
+    id: uid(),
+    name: name.trim(),
+    companions: getCheckedCompanions(),
+    companionsOther: document.getElementById('fCompanionsOther').value.trim(),
+    tags: document.getElementById('fTags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    hotel: document.getElementById('fHotel').value.trim(),
+    isFlight: document.getElementById('fIsFlight').checked,
+    isDrive: document.getElementById('fIsDrive').checked,
+    isTrain: document.getElementById('fIsTrain').checked,
+    isBoat: document.getElementById('fIsBoat').checked,
+  };
+  templates.push(tpl);
+  saveTemplates(templates);
+  populateTemplateSelect();
+  renderTemplateChips();
+  alert(`Saved "${tpl.name}" as a template — pick it from the dropdown next time you log a similar trip.`);
+});
+function renderTemplateChips(){
+  const container = document.getElementById('templateChips');
+  if(!container) return;
+  container.innerHTML = '';
+  if(!templates.length){
+    container.innerHTML = '<div class="companion-empty-note">No templates saved yet — save one from the trip form.</div>';
+    return;
+  }
+  templates.forEach((tpl, idx)=>{
+    const chip = document.createElement('div');
+    chip.className = 'settings-chip';
+    chip.innerHTML = `<span>${escapeHtml(tpl.name)}</span><button type="button" aria-label="Remove template ${escapeAttr(tpl.name)}">✕</button>`;
+    chip.querySelector('button').addEventListener('click', ()=>{
+      templates.splice(idx, 1);
+      saveTemplates(templates);
+      renderTemplateChips();
+      populateTemplateSelect();
+    });
+    container.appendChild(chip);
+  });
+}
+
 function populateCruiseLineOptions(){
   const lines = [...new Set(trips.filter(t=>t.cruise && t.cruise.cruiseLine).map(t=>t.cruise.cruiseLine))].sort();
   document.getElementById('cruiseLineOptions').innerHTML = lines.map(l => `<option value="${escapeAttr(l)}">`).join('');
@@ -1387,6 +1717,35 @@ function populateCruiseLineOptions(){
 
 function updateCostLabel(){
   document.getElementById('fCostLabel').textContent = `Cost / budget (${settings.currencySymbol})`;
+}
+document.getElementById('toggleCostBreakdownBtn').addEventListener('click', ()=>{
+  const panel = document.getElementById('costBreakdownPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+});
+function clearCostBreakdownFields(){
+  ['fCostFlights','fCostAccommodation','fCostFood','fCostActivities','fCostOther'].forEach(id=>{
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('costBreakdownPanel').style.display = 'none';
+}
+function getCostBreakdownFromForm(){
+  const fields = { flights:'fCostFlights', accommodation:'fCostAccommodation', food:'fCostFood', activities:'fCostActivities', other:'fCostOther' };
+  const result = {};
+  let any = false;
+  Object.entries(fields).forEach(([key,id])=>{
+    const val = document.getElementById(id).value;
+    result[key] = val === '' ? null : parseFloat(val);
+    if(result[key] !== null) any = true;
+  });
+  return any ? result : null;
+}
+function setCostBreakdownFormFields(breakdown){
+  const fields = { flights:'fCostFlights', accommodation:'fCostAccommodation', food:'fCostFood', activities:'fCostActivities', other:'fCostOther' };
+  Object.entries(fields).forEach(([key,id])=>{
+    const val = breakdown ? breakdown[key] : null;
+    document.getElementById(id).value = (val === null || val === undefined) ? '' : val;
+  });
+  document.getElementById('costBreakdownPanel').style.display = breakdown ? 'block' : 'none';
 }
 
 /* ---------------------------------------------------------------
@@ -1442,7 +1801,7 @@ function addBetweenPortRow(initialValue){
       <label>Port along the way</label>
       <div class="lp-container"></div>
     </div>
-    <button type="button" class="btn btn-rust">✕</button>
+    <button type="button" class="btn btn-rust" aria-label="Remove this port">✕</button>
   `;
   document.getElementById('portsBetween').appendChild(wrapper);
   const picker = createLocationPicker(wrapper.querySelector('.lp-container'), 'Search for a port', initialValue);
@@ -1582,6 +1941,8 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     groupName: document.getElementById('fGroupName').value.trim(),
     tags: document.getElementById('fTags').value.split(',').map(s=>s.trim()).filter(Boolean),
     cost: document.getElementById('fCost').value === '' ? null : parseFloat(document.getElementById('fCost').value),
+    costBreakdown: getCostBreakdownFromForm(),
+    hotel: document.getElementById('fHotel').value.trim(),
     customBase: document.getElementById('fUseCustomBase').checked ? customBasePicker.getValue() : null,
     cruise: isCruise ? {
       cruiseLine: document.getElementById('fCruiseLine').value.trim(),
@@ -1610,6 +1971,7 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
 --------------------------------------------------------------- */
 let homePicker = null;
 function renderSettingsView(){
+  applyTheme(settings.darkMode);
   if(!homePicker){
     homePicker = createLocationPicker(document.getElementById('lpHome'), 'Search for your home city', settings.home);
   }else{
@@ -1618,13 +1980,34 @@ function renderSettingsView(){
   document.getElementById('fUnitMetric').checked = settings.unit === 'metric';
   updateUnitToggleLabel();
   document.getElementById('fCurrencySymbol').value = settings.currencySymbol;
+  document.getElementById('fDarkMode').checked = settings.darkMode;
+  updateDarkModeToggleLabel();
+  document.getElementById('fReminders').checked = settings.remindersEnabled;
+  document.getElementById('remindersToggleLabel').textContent = settings.remindersEnabled ? 'On' : 'Off';
   renderCompanionChips();
+  renderTemplateChips();
 }
 function updateUnitToggleLabel(){
   const isMetric = document.getElementById('fUnitMetric').checked;
   document.getElementById('unitToggleLabel').textContent = isMetric ? 'Kilometres (metric)' : 'Miles (imperial)';
 }
 document.getElementById('fUnitMetric').addEventListener('change', updateUnitToggleLabel);
+
+/* ---------------------------------------------------------------
+   DARK MODE
+--------------------------------------------------------------- */
+function applyTheme(isDark){
+  document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+}
+function updateDarkModeToggleLabel(){
+  const isDark = document.getElementById('fDarkMode').checked;
+  document.getElementById('darkModeToggleLabel').textContent = isDark ? '🌙 Dark mode' : '🌞 Light mode';
+}
+document.getElementById('fDarkMode').addEventListener('change', ()=>{
+  updateDarkModeToggleLabel();
+  applyTheme(document.getElementById('fDarkMode').checked); // preview immediately, saved on "Save settings"
+});
+applyTheme(settings.darkMode); // apply saved preference as soon as the page loads
 function renderCompanionChips(){
   const container = document.getElementById('companionChips');
   container.innerHTML = '';
@@ -1635,7 +2018,7 @@ function renderCompanionChips(){
   settings.companions.forEach((name, idx)=>{
     const chip = document.createElement('div');
     chip.className = 'settings-chip';
-    chip.innerHTML = `<span>${escapeHtml(name)}</span><button type="button">✕</button>`;
+    chip.innerHTML = `<span>${escapeHtml(name)}</span><button type="button" aria-label="Remove companion ${escapeAttr(name)}">✕</button>`;
     chip.querySelector('button').addEventListener('click', ()=>{
       settings.companions.splice(idx, 1);
       saveSettings(settings);
@@ -1664,7 +2047,11 @@ document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
   settings.home = homePicker.getValue();
   settings.unit = document.getElementById('fUnitMetric').checked ? 'metric' : 'imperial';
   settings.currencySymbol = document.getElementById('fCurrencySymbol').value.trim() || '£';
+  settings.darkMode = document.getElementById('fDarkMode').checked;
+  settings.remindersEnabled = document.getElementById('fReminders').checked;
   saveSettings(settings);
+  applyTheme(settings.darkMode);
+  updateMapTiles();
   renderTrips();
   const confirmEl = document.getElementById('settingsSaveConfirm');
   confirmEl.classList.add('show');
@@ -1693,6 +2080,41 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   URL.revokeObjectURL(url);
 });
 
+function csvEscape(val){
+  const s = String(val === null || val === undefined ? '' : val);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+document.getElementById('exportCsvBtn').addEventListener('click', ()=>{
+  const headers = [
+    'Place','Country','Continent','StartDate','EndDate','Days','Companions','Hotel',
+    'Cost','Currency','Tags','GroupName','Flight','Cruise','Drive','Train','Boat',
+    'CruiseLine','ShipName','Notes'
+  ];
+  const rows = [...trips].sort((a,b)=>a.startDate.localeCompare(b.startDate)).map(t=>[
+    t.place, t.country, effectiveContinent(t), t.startDate, t.endDate, dayCount(t.startDate,t.endDate),
+    [...(t.companions||[]), t.companionsOther].filter(Boolean).join('; '),
+    t.hotel, t.cost, t.cost!==null&&t.cost!==undefined ? settings.currencySymbol : '',
+    (t.tags||[]).join('; '), t.groupName,
+    t.isFlight?'Y':'', t.isCruise?'Y':'', t.isDrive?'Y':'', t.isTrain?'Y':'', t.isBoat?'Y':'',
+    t.cruise?t.cruise.cruiseLine:'', t.cruise?t.cruise.shipName:'', t.notes
+  ]);
+  const csv = [headers, ...rows].map(row => row.map(csvEscape).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `waypoints-${todayStr()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('printLogBtn').addEventListener('click', ()=>{
+  switchView('trips');
+  setTimeout(()=> window.print(), 100);
+});
+
 let pendingImport = null;
 
 document.getElementById('importFile').addEventListener('change', async (e)=>{
@@ -1719,9 +2141,11 @@ document.getElementById('importFile').addEventListener('change', async (e)=>{
           home: data.settings.home || null,
           companions: Array.isArray(data.settings.companions) ? data.settings.companions : [],
           unit: (data.settings.unit === 'metric') ? 'metric' : 'imperial',
-          currencySymbol: (typeof data.settings.currencySymbol === 'string' && data.settings.currencySymbol) ? data.settings.currencySymbol : '£'
+          currencySymbol: (typeof data.settings.currencySymbol === 'string' && data.settings.currencySymbol) ? data.settings.currencySymbol : '£',
+          darkMode: data.settings.darkMode === true,
+          remindersEnabled: data.settings.remindersEnabled === true
         }
-      : { home: null, companions: [], unit: 'imperial', currencySymbol: '£' };
+      : { home: null, companions: [], unit: 'imperial', currencySymbol: '£', darkMode: false, remindersEnabled: false };
 
     pendingImport = { trips: importedTrips, settings: importedSettings };
 
@@ -1921,7 +2345,7 @@ function renderWishlist(){
   const listEl = document.getElementById('wishList');
   listEl.innerHTML = '';
   if(!wishlist.length){
-    listEl.innerHTML = '<div class="empty-note">Nothing on your wishlist yet — add somewhere you\'d love to go.</div>';
+    listEl.innerHTML = '<div class="empty-state"><span class="empty-icon">✨</span><span class="empty-text">Nothing on your wishlist yet — add somewhere you\'d love to go.</span></div>';
     return;
   }
   wishlist.forEach(w=>{
@@ -1968,6 +2392,30 @@ function countryVisitCounts(){
   return counts;
 }
 
+function renderPassport(){
+  const grid = document.getElementById('passportGrid');
+  const summary = document.getElementById('passportSummary');
+  if(!trips.length){
+    summary.textContent = '';
+    grid.innerHTML = '<div class="empty-state"><span class="empty-icon">🛂</span><span class="empty-text">Your passport is empty — log your first trip to get a stamp.</span></div>';
+    return;
+  }
+  const sorted = [...trips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  summary.textContent = `${sorted.length} stamp${sorted.length!==1?'s':''}, in order`;
+  grid.innerHTML = sorted.map(t=>{
+    const flag = flagForTrip(t) || '📍';
+    const date = new Date(t.startDate+'T00:00:00');
+    const dateLabel = date.toLocaleString('en', {month:'short', year:'numeric'});
+    return `
+      <div class="passport-stamp${isUpcoming(t)?' upcoming':''}" title="${escapeAttr(t.place)} — ${t.startDate}">
+        <div class="stamp-flag">${flag}</div>
+        <div class="stamp-place">${escapeHtml(t.place)}</div>
+        <div class="stamp-date">${dateLabel}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 function renderCountryChecklist(){
   const counts = countryVisitCounts();
   const totalCountries = Object.values(COUNTRY_LIST).reduce((sum,list)=>sum+list.length, 0);
@@ -1980,6 +2428,10 @@ function renderCountryChecklist(){
   const accordion = document.getElementById('continentAccordion');
   accordion.innerHTML = '';
 
+  const CONTINENT_ICONS = {
+    'Europe':'🏰', 'North America':'🗽', 'South America':'🌴', 'Asia':'🏯',
+    'Africa':'🦁', 'Oceania':'🏝️', 'Antarctica':'🐧'
+  };
   Object.entries(COUNTRY_LIST).forEach(([continent, list])=>{
     const visited = list.filter(([code])=>counts[code]>0).length;
     const isOpen = expandedContinents.has(continent);
@@ -1988,7 +2440,7 @@ function renderCountryChecklist(){
     section.className = 'continent-section';
     section.innerHTML = `
       <div class="continent-header">
-        <h3><span class="continent-toggle-icon${isOpen?' open':''}">▶</span> ${escapeHtml(continent)}</h3>
+        <h3><span class="continent-toggle-icon${isOpen?' open':''}">▶</span> ${CONTINENT_ICONS[continent]||'🌍'} ${escapeHtml(continent)}</h3>
         <span class="continent-progress">${visited} / ${list.length}</span>
       </div>
       <div class="continent-progress-bar"><div class="continent-progress-fill" style="width:${Math.round(visited/list.length*100)}%"></div></div>
@@ -1997,7 +2449,7 @@ function renderCountryChecklist(){
           ${list.map(([code,name])=>{
             const count = counts[code] || 0;
             const flag = flagFromIso2(code);
-            return `<div class="country-chip${count>0?' visited':''}">
+            return `<div class="country-chip${count>0?' visited':''}" data-country-name="${count>0?escapeAttr(name):''}">
               <span class="country-name">${flag} ${escapeHtml(name)}</span>
               ${count>0 ? `<span class="country-count">×${count}</span>` : ''}
             </div>`;
@@ -2005,6 +2457,11 @@ function renderCountryChecklist(){
         </div>
       </div>
     `;
+    section.querySelectorAll('.country-chip.visited').forEach(chip=>{
+      chip.style.cursor = 'pointer';
+      chip.title = 'Show these trips';
+      chip.addEventListener('click', ()=> goToTripsFilteredBy(chip.dataset.countryName));
+    });
     section.querySelector('.continent-header').addEventListener('click', ()=>{
       const body = section.querySelector('.continent-body');
       const nowOpen = body.classList.toggle('open');
@@ -2056,6 +2513,14 @@ function visitCounts(){
     counts[k] = (counts[k]||0) + 1;
   });
   return counts;
+}
+
+function effectiveCost(trip){
+  if(trip.costBreakdown){
+    const vals = Object.values(trip.costBreakdown).filter(v => typeof v === 'number');
+    if(vals.length) return vals.reduce((a,b)=>a+b, 0);
+  }
+  return trip.cost;
 }
 
 function companionNames(trip){
@@ -2134,24 +2599,242 @@ function tripCard(trip, counts, opts){
   if(trip.isTrain && dist.trainKm > 0) metaParts.push(`<span class="mono">🚆 ${formatDistance(dist.trainKm)}</span>`);
   if(trip.isBoat && dist.boatKm > 0) metaParts.push(`<span class="mono">🚤 ${formatDistance(dist.boatKm)}</span>`);
   if(trip.groupName && !opts.hideGroupBadge) metaParts.push(`<span>🔗 ${escapeHtml(trip.groupName)}</span>`);
+  if(trip.hotel) metaParts.push(`<span>🏨 ${escapeHtml(trip.hotel)}</span>`);
   if(trip.tags && trip.tags.length) metaParts.push(`<span>${trip.tags.map(t=>'🏷️ '+escapeHtml(t)).join(' ')}</span>`);
-  if(trip.cost !== null && trip.cost !== undefined) metaParts.push(`<span class="mono">${escapeHtml(settings.currencySymbol)}${trip.cost.toLocaleString()}</span>`);
+  if(effectiveCost(trip) !== null && effectiveCost(trip) !== undefined) metaParts.push(`<span class="mono">${escapeHtml(settings.currencySymbol)}${effectiveCost(trip).toLocaleString()}</span>`);
+
+  const packing = trip.packing || [];
+  const packedCount = packing.filter(p=>p.checked).length;
+  const packingExpanded = expandedPacking.has(trip.id);
 
   const div = document.createElement('div');
   div.className = 'trip-card ' + (upcoming ? 'upcoming' : 'past');
   div.innerHTML = `
+    <img class="trip-thumb" src="https://staticmap.openstreetmap.de/staticmap.php?center=${trip.lat},${trip.lng}&zoom=10&size=120x120&markers=${trip.lat},${trip.lng},lightblue1" alt="" loading="lazy" onerror="this.remove()">
     <div class="trip-main">
       <h3>${flag ? flag+' ' : ''}${escapeHtml(trip.place)} ${badges.join(' ')} ${count > 1 ? `<span class="stamp">×${count}</span>` : ''}</h3>
       <div class="trip-meta">${metaParts.join('')}</div>
       ${trip.notes ? `<div class="trip-notes">${escapeHtml(trip.notes)}</div>` : ''}
+      <div class="packing-toggle" data-action="toggle-packing" data-trip-id="${trip.id}">🎒 Packing list ${packing.length ? `(${packedCount}/${packing.length})` : ''}</div>
+      <div class="packing-panel" style="display:${packingExpanded?'block':'none'};">
+        ${packing.map(item => `
+          <div class="packing-item">
+            <input type="checkbox" data-action="toggle-packing-item" data-trip-id="${trip.id}" data-packing-id="${item.id}" ${item.checked?'checked':''}>
+            <span class="${item.checked?'packed':''}">${escapeHtml(item.text)}</span>
+            <button data-action="delete-packing-item" data-trip-id="${trip.id}" data-packing-id="${item.id}" aria-label="Remove ${escapeAttr(item.text)} from packing list">✕</button>
+          </div>
+        `).join('')}
+        <div class="packing-add-row">
+          <input type="text" class="packing-new-input" data-trip-id="${trip.id}" placeholder="Add item…">
+          <button class="btn btn-ghost" data-action="add-packing-item" data-trip-id="${trip.id}" type="button">+ Add</button>
+        </div>
+      </div>
     </div>
     <div class="trip-actions">
       <button class="btn btn-ghost" data-action="edit" data-id="${trip.id}">Edit</button>
       <button class="btn btn-ghost" data-action="duplicate" data-id="${trip.id}">Duplicate</button>
+      <button class="btn btn-ghost" data-action="share" data-id="${trip.id}">📤 Share</button>
       <button class="btn btn-rust" data-action="delete" data-id="${trip.id}">Delete</button>
     </div>
   `;
   return div;
+}
+
+/* ---------------------------------------------------------------
+   SHAREABLE IMAGES (hand-drawn on canvas — no image library, and
+   works fully offline since it doesn't screenshot the DOM)
+--------------------------------------------------------------- */
+function crCanvasRoundRect(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.arcTo(x+w, y, x+w, y+h, r);
+  ctx.arcTo(x+w, y+h, x, y+h, r);
+  ctx.arcTo(x, y+h, x, y, r);
+  ctx.arcTo(x, y, x+w, y, r);
+  ctx.closePath();
+}
+function crWrapText(ctx, text, x, y, maxWidth, lineHeight, maxLines){
+  const words = text.split(' ');
+  let line = '', curY = y, lines = 0;
+  for(let n=0; n<words.length; n++){
+    const testLine = line + words[n] + ' ';
+    if(ctx.measureText(testLine).width > maxWidth && n > 0){
+      ctx.fillText(line.trim(), x, curY);
+      line = words[n] + ' ';
+      curY += lineHeight;
+      lines++;
+      if(maxLines && lines >= maxLines-1){
+        let rest = words.slice(n+1).join(' ');
+        let finalLine = line + rest;
+        while(ctx.measureText(finalLine + '…').width > maxWidth && finalLine.length > 0){
+          finalLine = finalLine.slice(0, -1);
+        }
+        ctx.fillText(finalLine.trim() + (rest ? '…' : ''), x, curY);
+        return curY;
+      }
+    }else{
+      line = testLine;
+    }
+  }
+  ctx.fillText(line.trim(), x, curY);
+  return curY;
+}
+
+async function downloadOrShareCanvas(canvas, filename, shareTitle){
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  if(!blob) return;
+  const file = new File([blob], filename, { type:'image/png' });
+  if(navigator.canShare && navigator.canShare({ files:[file] })){
+    try{
+      await navigator.share({ files:[file], title: shareTitle || 'Waypoints' });
+      return;
+    }catch(e){
+      // user cancelled the share sheet, or it failed — fall through to download
+    }
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function crDrawCardFrame(ctx, W, H){
+  ctx.fillStyle = '#f6f1e4';
+  ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#c9a227';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([14, 9]);
+  crCanvasRoundRect(ctx, 16, 16, W-32, H-32, 18);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+function crDrawWatermark(ctx, W, H){
+  ctx.fillStyle = '#4a5a68';
+  ctx.font = '600 20px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🧭 Waypoints', W/2, H-38);
+}
+function crStatRow(ctx, x, y, w, label, value){
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#4a5a68';
+  ctx.font = '400 22px Inter, sans-serif';
+  ctx.fillText(label, x, y);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#1c2b3a';
+  ctx.font = '700 22px "JetBrains Mono", monospace';
+  ctx.fillText(String(value), x+w, y);
+  ctx.strokeStyle = '#ddd0ac';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y+14);
+  ctx.lineTo(x+w, y+14);
+  ctx.stroke();
+}
+
+/* --- Trip share card --- */
+async function generateTripShareCanvas(trip){
+  await document.fonts.ready;
+
+  const dist = tripDistances(trip);
+  const rows = [];
+  if(trip.country) rows.push(['Country', trip.country]);
+  const names = companionNames(trip);
+  if(names.length) rows.push(['Travelled with', names.join(', ')]);
+  const badges = [trip.isFlight&&'✈️ Flight', trip.isCruise&&'🚢 Cruise', trip.isDrive&&'🚗 Drive', trip.isTrain&&'🚆 Train', trip.isBoat&&'🚤 Boat'].filter(Boolean).join('  ');
+  if(badges) rows.push(['Travelled by', badges]);
+  if(dist.fromHomeKm !== null) rows.push([trip.customBase?`Distance from ${trip.customBase.name}`:'Distance from home', formatDistance(dist.fromHomeKm)]);
+  if(trip.isCruise && dist.cruiseKm > 0) rows.push(['Cruise distance', Math.round(kmToNm(dist.cruiseKm)).toLocaleString()+' nm']);
+  if(trip.isCruise && trip.cruise && (trip.cruise.cruiseLine || trip.cruise.shipName)){
+    rows.push(['Ship', [trip.cruise.cruiseLine, trip.cruise.shipName].filter(Boolean).join(' — ')]);
+  }
+  if(trip.hotel) rows.push(['Stayed at', trip.hotel]);
+  if(effectiveCost(trip) !== null && effectiveCost(trip) !== undefined) rows.push(['Cost', settings.currencySymbol + effectiveCost(trip).toLocaleString()]);
+  if(trip.tags && trip.tags.length) rows.push(['Tags', trip.tags.join(', ')]);
+
+  // Estimate notes height roughly from character count (~2 chars per px at
+  // this font size and width), capped at 5 lines to match crWrapText's limit.
+  const W = 1000;
+  const notesMaxCharsPerLine = 70;
+  const notesLines = trip.notes ? Math.min(5, Math.max(1, Math.ceil(trip.notes.length / notesMaxCharsPerLine))) : 0;
+  const notesH = trip.notes ? 30 + notesLines*34 : 0;
+
+  const headerH = 400;
+  const rowsH = rows.length * 50;
+  const footerH = 110;
+  const H = headerH + rowsH + notesH + footerH;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  crDrawCardFrame(ctx, W, H);
+
+  const flag = flagForTrip(trip);
+  ctx.textAlign = 'center';
+  ctx.font = '80px sans-serif';
+  ctx.fillText(flag, W/2, 160);
+
+  ctx.fillStyle = '#1c2b3a';
+  ctx.font = '700 58px Fraunces, serif';
+  ctx.fillText(trip.place, W/2, 250);
+
+  const days = dayCount(trip.startDate, trip.endDate);
+  ctx.fillStyle = '#4a5a68';
+  ctx.font = '400 26px "JetBrains Mono", monospace';
+  ctx.fillText(`${trip.startDate} → ${trip.endDate}  ·  ${days} day${days!==1?'s':''}`, W/2, 300);
+
+  ctx.strokeStyle = '#ddd0ac';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([2,6]);
+  ctx.beginPath(); ctx.moveTo(80, 340); ctx.lineTo(W-80, 340); ctx.stroke();
+  ctx.setLineDash([]);
+
+  let y = 400;
+  rows.forEach(([label,value])=>{
+    crStatRow(ctx, 80, y, W-160, label, value);
+    y += 50;
+  });
+
+  if(trip.notes){
+    y += 30;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#1c2b3a';
+    ctx.font = 'italic 400 24px Inter, sans-serif';
+    crWrapText(ctx, '"' + trip.notes + '"', 80, y, W-160, 34, 5);
+  }
+
+  crDrawWatermark(ctx, W, H);
+  return canvas;
+}
+
+/* --- All-time / yearly stats share card --- */
+async function generateStatsShareCanvas(title, rows){
+  await document.fonts.ready;
+  const W = 900, H = 300 + rows.length*64;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  crDrawCardFrame(ctx, W, H);
+
+  ctx.textAlign = 'center';
+  ctx.font = '80px sans-serif';
+  ctx.fillText('🧭', W/2, 140);
+
+  ctx.fillStyle = '#1c2b3a';
+  ctx.font = '700 52px Fraunces, serif';
+  ctx.fillText(title, W/2, 210);
+
+  let y = 280;
+  rows.forEach(([label,value])=>{
+    crStatRow(ctx, 90, y, W-180, label, value);
+    y += 64;
+  });
+
+  crDrawWatermark(ctx, W, H);
+  return canvas;
 }
 
 function escapeHtml(s){
@@ -2166,12 +2849,63 @@ document.getElementById('tripSearch').addEventListener('input', e=>{
   renderTrips();
 });
 
+const activeQuickFilters = new Set();
+let filterDateFrom = '', filterDateTo = '';
+
+function matchesQuickFilters(trip){
+  for(const f of activeQuickFilters){
+    if(f === 'thisYear'){
+      if(trip.startDate.slice(0,4) !== todayStr().slice(0,4)) return false;
+    }else{
+      if(!trip[f]) return false;
+    }
+  }
+  return true;
+}
+function matchesDateRange(trip){
+  if(filterDateFrom && trip.endDate < filterDateFrom) return false;
+  if(filterDateTo && trip.startDate > filterDateTo) return false;
+  return true;
+}
+
+document.querySelectorAll('.quick-filter-chip').forEach(chip=>{
+  chip.addEventListener('click', ()=>{
+    const f = chip.dataset.filter;
+    if(activeQuickFilters.has(f)){
+      activeQuickFilters.delete(f);
+      chip.classList.remove('active');
+    }else{
+      activeQuickFilters.add(f);
+      chip.classList.add('active');
+    }
+    renderTrips();
+  });
+});
+document.getElementById('toggleDateRangeBtn').addEventListener('click', ()=>{
+  const row = document.getElementById('dateRangeRow');
+  row.style.display = row.style.display === 'none' ? 'flex' : 'none';
+});
+document.getElementById('filterDateFrom').addEventListener('change', e=>{
+  filterDateFrom = e.target.value;
+  renderTrips();
+});
+document.getElementById('filterDateTo').addEventListener('change', e=>{
+  filterDateTo = e.target.value;
+  renderTrips();
+});
+document.getElementById('clearDateRangeBtn').addEventListener('click', ()=>{
+  filterDateFrom = ''; filterDateTo = '';
+  document.getElementById('filterDateFrom').value = '';
+  document.getElementById('filterDateTo').value = '';
+  renderTrips();
+});
+
 function matchesSearch(trip, query){
   if(!query) return true;
   const haystack = [
-    trip.place, trip.country, trip.notes, trip.groupName, trip.companionsOther,
+    trip.place, trip.country, trip.notes, trip.groupName, trip.companionsOther, trip.hotel,
     ...(trip.companions||[]), ...(trip.tags||[]), trip.startDate.slice(0,4), trip.endDate.slice(0,4),
-    trip.cruise && trip.cruise.cruiseLine, trip.cruise && trip.cruise.shipName
+    trip.cruise && trip.cruise.cruiseLine, trip.cruise && trip.cruise.shipName, effectiveContinent(trip)
   ].filter(Boolean).join(' ').toLowerCase();
   return haystack.includes(query);
 }
@@ -2195,6 +2929,7 @@ function computeOverlaps(){
 }
 
 const expandedGroups = new Set();
+const expandedPacking = new Set();
 
 function groupCard(groupName, groupTrips, counts){
   const sorted = [...groupTrips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
@@ -2225,7 +2960,7 @@ function groupCard(groupName, groupTrips, counts){
 
 function renderTrips(){
   const counts = visitCounts();
-  const filtered = trips.filter(t => matchesSearch(t, searchQuery));
+  const filtered = trips.filter(t => matchesSearch(t, searchQuery) && matchesQuickFilters(t) && matchesDateRange(t));
 
   // Bucket into standalone trips vs named groups (a group needs 2+ members
   // surviving the current filter to render as a group; a lone survivor from a
@@ -2267,12 +3002,16 @@ function renderTrips(){
   document.getElementById('pastCount').textContent = pastItems.length;
 
   if(!upcomingItems.length){
-    upcomingList.innerHTML = `<div class="empty-note">${searchQuery ? 'No upcoming trips match your search.' : 'Nothing booked yet. Log a future trip above.'}</div>`;
+    upcomingList.innerHTML = searchQuery
+      ? `<div class="empty-note">No upcoming trips match your search.</div>`
+      : `<div class="empty-state"><span class="empty-icon">🧳</span><span class="empty-text">Nothing booked yet — log a future trip above.</span></div>`;
   }else{
     upcomingItems.forEach(i => upcomingList.appendChild(i.render()));
   }
   if(!pastItems.length){
-    pastList.innerHTML = `<div class="empty-note">${searchQuery ? 'No past trips match your search.' : 'No past trips logged yet.'}</div>`;
+    pastList.innerHTML = searchQuery
+      ? `<div class="empty-note">No past trips match your search.</div>`
+      : `<div class="empty-state"><span class="empty-icon">🗺️</span><span class="empty-text">No past trips logged yet — your travel history starts here.</span></div>`;
   }else{
     pastItems.forEach(i => pastList.appendChild(i.render()));
   }
@@ -2289,7 +3028,86 @@ function renderTrips(){
     overlapEl.innerHTML = '';
   }
 
+  renderCountdownBanner();
+  renderReminderBanner();
   renderOnThisDay();
+}
+
+const NOTIFIED_KEY = 'waypoints.notifiedTrips.v1';
+function getNotifiedTripIds(){
+  try{ return JSON.parse(localStorage.getItem(NOTIFIED_KEY)) || []; }catch(e){ return []; }
+}
+function markTripNotified(id){
+  const ids = getNotifiedTripIds();
+  if(!ids.includes(id)){ ids.push(id); localStorage.setItem(NOTIFIED_KEY, JSON.stringify(ids)); }
+}
+
+function renderReminderBanner(){
+  const el = document.getElementById('reminderBanner');
+  if(!settings.remindersEnabled){ el.innerHTML = ''; return; }
+
+  const today = todayStr();
+  const notifiedIds = getNotifiedTripIds();
+  const candidate = trips.find(t=>{
+    if(notifiedIds.includes(t.id)) return false;
+    if(t.notes && t.notes.trim()) return false; // already has notes, nothing to nudge about
+    const daysSince = Math.round((new Date(today) - new Date(t.endDate)) / 86400000);
+    return daysSince >= 2 && daysSince <= 10;
+  });
+
+  if(!candidate){ el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <span>💭 How was ${escapeHtml(candidate.place)}? Add some notes while it's fresh.</span>
+    <button data-action="dismiss-reminder" data-id="${candidate.id}">Dismiss</button>
+  `;
+
+  if('Notification' in window && Notification.permission === 'granted'){
+    try{ new Notification('Waypoints', { body: `How was ${candidate.place}? Add some notes while it's fresh.` }); }catch(e){}
+  }
+  markTripNotified(candidate.id);
+}
+document.addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-action="dismiss-reminder"]');
+  if(!btn) return;
+  document.getElementById('reminderBanner').innerHTML = '';
+});
+
+document.getElementById('fReminders').addEventListener('change', (e)=>{
+  const label = document.getElementById('remindersToggleLabel');
+  if(e.target.checked){
+    label.textContent = 'On';
+    if('Notification' in window && Notification.permission === 'default'){
+      Notification.requestPermission();
+    }
+  }else{
+    label.textContent = 'Off';
+  }
+});
+
+function renderCountdownBanner(){
+  const el = document.getElementById('countdownBanner');
+  const today = todayStr();
+  const upcoming = trips.filter(t=>t.startDate >= today).sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  if(upcoming.length){
+    const next = upcoming[0];
+    const days = Math.round((new Date(next.startDate) - new Date(today)) / 86400000);
+    const flag = flagForTrip(next);
+    if(days === 0){
+      el.innerHTML = `<div class="countdown-banner">🎉 ${flag?flag+' ':''}${escapeHtml(next.place)} starts today!</div>`;
+    }else{
+      el.innerHTML = `<div class="countdown-banner">🎉 ${days} day${days!==1?'s':''} until ${flag?flag+' ':''}${escapeHtml(next.place)}</div>`;
+    }
+    return;
+  }
+  const past = trips.filter(t=>t.endDate < today).sort((a,b)=>b.endDate.localeCompare(a.endDate));
+  if(past.length){
+    const last = past[0];
+    const days = Math.round((new Date(today) - new Date(last.endDate)) / 86400000);
+    el.innerHTML = `<div class="countdown-banner">✈️ It's been ${days} day${days!==1?'s':''} since ${escapeHtml(last.place)} — time to plan the next one?</div>`;
+    return;
+  }
+  el.innerHTML = '';
 }
 
 function renderOnThisDay(){
@@ -2362,6 +3180,9 @@ function openEditForm(t){
   document.getElementById('fTags').value = (t.tags || []).join(', ');
   updateCostLabel();
   document.getElementById('fCost').value = (t.cost === null || t.cost === undefined) ? '' : t.cost;
+  setCostBreakdownFormFields(t.costBreakdown);
+  populateHotelOptions();
+  document.getElementById('fHotel').value = t.hotel || '';
 
   document.getElementById('formTitle').textContent = editingId ? 'Edit trip' : 'Log a trip';
   form.style.display = 'block';
@@ -2416,10 +3237,80 @@ document.addEventListener('click', e=>{
     openEditForm(copy); // land straight in edit mode — dates are the most likely thing to change
   }
 
+  if(btn.dataset.action === 'share'){
+    const t = trips.find(t=>t.id === id);
+    if(!t) return;
+    btn.disabled = true;
+    const originalLabel = btn.textContent;
+    btn.textContent = '⏳ …';
+    generateTripShareCanvas(t)
+      .then(canvas => downloadOrShareCanvas(canvas, `waypoints-${t.place.toLowerCase().replace(/[^a-z0-9]+/g,'-')}.png`, t.place))
+      .catch(()=> alert("Couldn't generate the image — please try again."))
+      .finally(()=>{ btn.disabled = false; btn.textContent = originalLabel; });
+  }
+
   if(btn.dataset.action === 'edit'){
     const t = trips.find(t=>t.id === id);
     if(!t) return;
     openEditForm(t);
+  }
+});
+
+function addPackingItemFromRow(tripId){
+  const input = document.querySelector(`.packing-new-input[data-trip-id="${tripId}"]`);
+  if(!input) return;
+  const text = input.value.trim();
+  if(!text) return;
+  const t = trips.find(t=>t.id === tripId);
+  if(!t) return;
+  if(!Array.isArray(t.packing)) t.packing = [];
+  t.packing.push({ id: uid(), text, checked: false });
+  saveTrips(trips);
+  expandedPacking.add(tripId); // keep the panel open after adding
+  renderTrips();
+}
+
+document.addEventListener('click', e=>{
+  const toggle = e.target.closest('.packing-toggle');
+  if(toggle){
+    const tripId = toggle.dataset.tripId;
+    if(expandedPacking.has(tripId)) expandedPacking.delete(tripId); else expandedPacking.add(tripId);
+    renderTrips();
+    return;
+  }
+  const delBtn = e.target.closest('button[data-action="delete-packing-item"]');
+  if(delBtn){
+    const t = trips.find(t=>t.id === delBtn.dataset.tripId);
+    if(t){
+      t.packing = (t.packing||[]).filter(p=>p.id !== delBtn.dataset.packingId);
+      saveTrips(trips);
+      expandedPacking.add(delBtn.dataset.tripId);
+      renderTrips();
+    }
+    return;
+  }
+  const addBtn = e.target.closest('button[data-action="add-packing-item"]');
+  if(addBtn){
+    addPackingItemFromRow(addBtn.dataset.tripId);
+  }
+});
+document.addEventListener('change', e=>{
+  const cb = e.target.closest('input[data-action="toggle-packing-item"]');
+  if(!cb) return;
+  const t = trips.find(t=>t.id === cb.dataset.tripId);
+  if(!t) return;
+  const item = (t.packing||[]).find(p=>p.id === cb.dataset.packingId);
+  if(item){
+    item.checked = cb.checked;
+    saveTrips(trips);
+    expandedPacking.add(cb.dataset.tripId);
+    renderTrips();
+  }
+});
+document.addEventListener('keydown', e=>{
+  if(e.target.classList && e.target.classList.contains('packing-new-input') && e.key === 'Enter'){
+    e.preventDefault();
+    addPackingItemFromRow(e.target.dataset.tripId);
   }
 });
 
@@ -2428,14 +3319,81 @@ document.addEventListener('click', e=>{
 --------------------------------------------------------------- */
 let map = null;
 let markerLayer = null;
+let mapRenderGen = 0;
 
+/* Real road routing for drive trips, via OSRM's free public routing API (no
+   key needed). Flights are reasonably straight lines in reality so those
+   stay as-is; there's no free routing API for rail or sea journeys, so
+   train/boat/cruise routes also stay as straight lines. A straight line is
+   drawn immediately so the map never looks empty, then swapped for the
+   real road route once it arrives — and quietly left as-is if the request
+   fails (offline, rate-limited, etc). */
+const driveRouteCache = {};
+async function fetchDrivingRoute(from, to){
+  const key = `${from.lat.toFixed(4)},${from.lng.toFixed(4)}|${to.lat.toFixed(4)},${to.lng.toFixed(4)}`;
+  if(key in driveRouteCache) return driveRouteCache[key];
+  try{
+    const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if(data.code === 'Ok' && data.routes && data.routes[0]){
+      const coords = data.routes[0].geometry.coordinates.map(([lng,lat]) => [lat,lng]);
+      driveRouteCache[key] = coords;
+      return coords;
+    }
+    driveRouteCache[key] = null;
+    return null;
+  }catch(e){
+    driveRouteCache[key] = null;
+    return null;
+  }
+}
+function upgradeToRoadRoute(straightLine, from, to, lineStyle, gen){
+  fetchDrivingRoute(from, to).then(coords=>{
+    if(gen !== mapRenderGen || !coords) return; // map has moved on, or no route found
+    markerLayer.removeLayer(straightLine);
+    L.polyline(coords, lineStyle).addTo(markerLayer);
+  });
+}
+
+let tileLayer = null;
+function tileConfigForTheme(){
+  return settings.darkMode
+    ? {
+        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      }
+    : {
+        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      };
+}
+function updateMapTiles(){
+  if(!map) return;
+  if(tileLayer) map.removeLayer(tileLayer);
+  const cfg = tileConfigForTheme();
+  tileLayer = L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: 18 }).addTo(map);
+  tileLayer.bringToBack();
+}
 function initMapIfNeeded(){
   if(map) return;
+  if(typeof L === 'undefined'){
+    // Leaflet failed to load from the CDN (no internet, blocked, or a
+    // restricted preview environment) — fail gracefully instead of
+    // throwing, and let the person know rather than showing a blank map.
+    document.getElementById('map').innerHTML = `
+      <div style="height:100%; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; color:var(--ink-soft);">
+        <div>
+          <div style="font-size:2rem; margin-bottom:8px;">🗺️</div>
+          <div style="font-size:.9rem;">Couldn't load the map — this needs an internet connection to fetch map tiles.<br>Everything else in the app will still work fine.</div>
+        </div>
+      </div>
+    `;
+    return;
+  }
   map = L.map('map').setView([20, 0], 2);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 18
-  }).addTo(map);
+  const cfg = tileConfigForTheme();
+  tileLayer = L.tileLayer(cfg.url, { attribution: cfg.attribution, maxZoom: 18 }).addTo(map);
   markerLayer = L.layerGroup().addTo(map);
 }
 
@@ -2464,20 +3422,57 @@ function renderMap(){
     bounds.push([w.lat, w.lng]);
   });
 
-  // flight paths: dashed line from home to the flown-to airport(s) / destination
+  // Custom-base markers: a trip can use somewhere other than home as its
+  // starting point (e.g. staying in Belgium, day-tripping to Paris) — show
+  // each distinct one used, so it's clear on the map where routes start from.
+  const customBasesUsed = {};
   trips.forEach(t=>{
-    if(!home || !t.isFlight) return;
-    const flightColor = isUpcoming(t) ? '#9c7f1c' : '#3c6e71';
-    if(t.isCruise && t.cruise){
-      if(t.cruise.departureAirport){
-        L.polyline([[home.lat,home.lng],[t.cruise.departureAirport.lat,t.cruise.departureAirport.lng]], {color:flightColor, weight:2, dashArray:'6,6', opacity:.7}).addTo(markerLayer);
+    if(!t.customBase) return;
+    const key = t.customBase.lat.toFixed(4) + ',' + t.customBase.lng.toFixed(4);
+    if(!customBasesUsed[key]) customBasesUsed[key] = { base: t.customBase, trips: [] };
+    customBasesUsed[key].trips.push(t.place);
+  });
+  Object.values(customBasesUsed).forEach(({base, trips: tripNames})=>{
+    const baseMarker = L.circleMarker([base.lat, base.lng], {
+      radius: 7, color:'#1c2b3a', weight:2, dashArray:'3,3', fillColor:'#f6f1e4', fillOpacity:0.85
+    });
+    baseMarker.bindPopup(`<strong>📍 ${escapeHtml(base.name)}</strong><br>Base for: ${escapeHtml(tripNames.join(', '))}`);
+    baseMarker.addTo(markerLayer);
+    bounds.push([base.lat, base.lng]);
+  });
+
+  // Transport routes: a dashed/solid line per mode, from the trip's base
+  // (its custom base if set, otherwise home) to the destination — or, for a
+  // cruise leg, to/from the linked airport or port instead.
+  const ROUTE_STYLES = {
+    isFlight: { color:'#3c6e71', dashArray:'6,6', cruisePoints:t=>[t.cruise&&t.cruise.departureAirport, t.cruise&&t.cruise.arrivalAirport] },
+    isDrive:  { color:'#a34a3a', dashArray:'2,6', cruisePoints:t=>[t.cruise&&t.cruise.startPort, t.cruise&&t.cruise.endPort] },
+    isTrain:  { color:'#6b5b95', dashArray:'10,4', cruisePoints:t=>[t.cruise&&t.cruise.startPort, t.cruise&&t.cruise.endPort] },
+    isBoat:   { color:'#2a4f52', dashArray:'1,6', cruisePoints:t=>[t.cruise&&t.cruise.startPort, t.cruise&&t.cruise.endPort] },
+  };
+  const myMapGen = ++mapRenderGen;
+  trips.forEach(t=>{
+    const base = t.customBase || home;
+    if(!base) return;
+    Object.entries(ROUTE_STYLES).forEach(([flag, style])=>{
+      if(!t[flag]) return;
+      const upcoming = isUpcoming(t);
+      const lineStyle = { color: upcoming ? '#9c7f1c' : style.color, weight:2, dashArray:style.dashArray, opacity:.7 };
+      if(t.isCruise && t.cruise){
+        const [outPoint, backPoint] = style.cruisePoints(t);
+        if(outPoint){
+          const line = L.polyline([[base.lat,base.lng],[outPoint.lat,outPoint.lng]], lineStyle).addTo(markerLayer);
+          if(flag === 'isDrive') upgradeToRoadRoute(line, base, outPoint, lineStyle, myMapGen);
+        }
+        if(backPoint){
+          const line = L.polyline([[backPoint.lat,backPoint.lng],[base.lat,base.lng]], lineStyle).addTo(markerLayer);
+          if(flag === 'isDrive') upgradeToRoadRoute(line, backPoint, base, lineStyle, myMapGen);
+        }
+      }else{
+        const line = L.polyline([[base.lat,base.lng],[t.lat,t.lng]], lineStyle).addTo(markerLayer);
+        if(flag === 'isDrive') upgradeToRoadRoute(line, base, t, lineStyle, myMapGen);
       }
-      if(t.cruise.arrivalAirport){
-        L.polyline([[t.cruise.arrivalAirport.lat,t.cruise.arrivalAirport.lng],[home.lat,home.lng]], {color:flightColor, weight:2, dashArray:'6,6', opacity:.7}).addTo(markerLayer);
-      }
-    }else{
-      L.polyline([[home.lat,home.lng],[t.lat,t.lng]], {color:flightColor, weight:2, dashArray:'6,6', opacity:.7}).addTo(markerLayer);
-    }
+    });
   });
 
   // cruise routes: solid/dashed line through start port -> stops -> end port
@@ -2525,7 +3520,7 @@ function renderMap(){
       .map(t=>{
         const flag = flagForTrip(t);
         const names = companionNames(t);
-        const badges = [t.isFlight?'✈️':'', t.isCruise?'🚢':''].filter(Boolean).join(' ');
+        const badges = [t.isFlight?'✈️':'', t.isCruise?'🚢':'', t.isDrive?'🚗':'', t.isTrain?'🚆':'', t.isBoat?'🚤':''].filter(Boolean).join(' ');
         return `<strong>${flag?flag+' ':''}${escapeHtml(t.place)}</strong> ${badges}<br>${t.startDate} → ${t.endDate}${names.length ? '<br>with '+escapeHtml(names.join(', ')) : ''}`;
       })
       .join('<hr style="margin:6px 0;border:none;border-top:1px solid #ddd0ac;">');
@@ -2545,6 +3540,48 @@ function renderMap(){
 /* ---------------------------------------------------------------
    STATS
 --------------------------------------------------------------- */
+let visitsMode = 'city';
+document.querySelectorAll('.visits-mode-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    visitsMode = btn.dataset.mode;
+    document.querySelectorAll('.visits-mode-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('visitsModeLabel').textContent = visitsMode === 'city' ? 'place' : 'country';
+    renderVisitsBreakdown(visitsMode);
+  });
+});
+
+function renderVisitsBreakdown(mode){
+  const counts = {};
+  const names = {};
+  const filterTerms = {};
+  if(mode === 'country'){
+    trips.forEach(t=>{
+      const code = (t.countryCode || '').trim().toLowerCase();
+      const key = code || (t.country || '').trim().toLowerCase();
+      if(!key) return;
+      counts[key] = (counts[key] || 0) + 1;
+      if(!names[key]){
+        names[key] = (flagForTrip(t) ? flagForTrip(t)+' ' : '') + (t.country || 'Unknown');
+        filterTerms[key] = t.country || '';
+      }
+    });
+  }else{
+    trips.forEach(t=>{
+      const k = placeKey(t);
+      counts[k] = (counts[k] || 0) + 1;
+      names[k] = (flagForTrip(t) ? flagForTrip(t)+' ' : '') + t.place;
+      filterTerms[k] = t.place;
+    });
+  }
+  const sorted = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  const max = sorted.length ? sorted[0][1] : 1;
+  const visitsEl = document.getElementById('visitsBreakdown');
+  visitsEl.innerHTML = sorted.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
+  sorted.forEach(([k,c])=>{
+    visitsEl.appendChild(barRow(names[k], c, max, null, filterTerms[k]));
+  });
+}
+
 function renderStats(){
   const grid = document.getElementById('statGrid');
   grid.innerHTML = '';
@@ -2605,9 +3642,9 @@ function renderStats(){
     stats.push({ num: boatsCount, label:'🚤 Boat trips' });
     if(totalBoatKm > 0) stats.push({ num: distStat(totalBoatKm).toLocaleString(), label:`🚤 ${unitWord} by boat` });
   }
-  const tripsWithCost = trips.filter(t => t.cost !== null && t.cost !== undefined);
+  const tripsWithCost = trips.filter(t => effectiveCost(t) !== null && effectiveCost(t) !== undefined);
   if(tripsWithCost.length){
-    const totalSpend = tripsWithCost.reduce((sum,t)=>sum+t.cost, 0);
+    const totalSpend = tripsWithCost.reduce((sum,t)=>sum+effectiveCost(t), 0);
     stats.push({ num: settings.currencySymbol + Math.round(totalSpend).toLocaleString(), label:'💰 Total spend' });
   }
 
@@ -2636,21 +3673,7 @@ function renderStats(){
     grid.appendChild(d);
   });
 
-  // visits per place
-  const counts = {};
-  const names = {};
-  trips.forEach(t=>{
-    const k = placeKey(t);
-    counts[k] = (counts[k]||0)+1;
-    names[k] = (flagForTrip(t) ? flagForTrip(t)+' ' : '') + t.place;
-  });
-  const sortedPlaces = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
-  const maxCount = sortedPlaces.length ? sortedPlaces[0][1] : 1;
-  const visitsEl = document.getElementById('visitsBreakdown');
-  visitsEl.innerHTML = sortedPlaces.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
-  sortedPlaces.forEach(([k,c])=>{
-    visitsEl.appendChild(barRow(names[k], c, maxCount));
-  });
+  renderVisitsBreakdown(visitsMode);
 
   // travelled with most
   const companionCounts = {};
@@ -2664,7 +3687,7 @@ function renderStats(){
   const companionsEl = document.getElementById('companionsBreakdown');
   companionsEl.innerHTML = sortedCompanions.length ? '' : '<div class="empty-note">Add companions in Settings, then tag them on trips to see this.</div>';
   sortedCompanions.forEach(([name,c])=>{
-    companionsEl.appendChild(barRow(name, c, maxCompanion));
+    companionsEl.appendChild(barRow(name, c, maxCompanion, null, name));
   });
 
   // trips per year
@@ -2678,7 +3701,7 @@ function renderStats(){
   const yearEl = document.getElementById('yearBreakdown');
   yearEl.innerHTML = sortedYears.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
   sortedYears.forEach(([y,c])=>{
-    yearEl.appendChild(barRow(y, c, maxYear));
+    yearEl.appendChild(barRow(y, c, maxYear, null, y));
   });
 
   // by continent
@@ -2692,7 +3715,7 @@ function renderStats(){
   const contEl = document.getElementById('continentBreakdown');
   contEl.innerHTML = sortedCont.length ? '' : '<div class="empty-note">No trips logged yet.</div>';
   sortedCont.forEach(([c,n])=>{
-    contEl.appendChild(barRow(c, n, maxCont));
+    contEl.appendChild(barRow(c, n, maxCont, null, c === 'Unspecified' ? null : c));
   });
 
   // by tag
@@ -2707,7 +3730,7 @@ function renderStats(){
   const tagEl = document.getElementById('tagBreakdown');
   tagEl.innerHTML = sortedTags.length ? '' : '<div class="empty-note">Add tags to your trips to see this breakdown.</div>';
   sortedTags.forEach(([tag,c])=>{
-    tagEl.appendChild(barRow(tag, c, maxTag));
+    tagEl.appendChild(barRow(tag, c, maxTag, null, tag));
   });
 
   // spend per year
@@ -2715,21 +3738,45 @@ function renderStats(){
   trips.forEach(t=>{
     if(t.cost === null || t.cost === undefined) return;
     const y = t.startDate.slice(0,4);
-    spendByYear[y] = (spendByYear[y]||0) + t.cost;
+    spendByYear[y] = (spendByYear[y]||0) + effectiveCost(t);
   });
   const sortedSpend = Object.entries(spendByYear).sort((a,b)=>a[0].localeCompare(b[0]));
   const maxSpend = sortedSpend.length ? Math.max(...sortedSpend.map(s=>s[1])) : 1;
   const spendEl = document.getElementById('spendBreakdown');
   spendEl.innerHTML = sortedSpend.length ? '' : '<div class="empty-note">Add a cost to your trips to see yearly spend.</div>';
   sortedSpend.forEach(([y,total])=>{
-    spendEl.appendChild(barRow(y, Math.round(total), maxSpend, settings.currencySymbol));
+    spendEl.appendChild(barRow(y, Math.round(total), maxSpend, settings.currencySymbol, y));
   });
+
+  // spend by category
+  const CATEGORY_LABELS = { flights:'✈️ Flights', accommodation:'🏨 Accommodation', food:'🍽️ Food', activities:'🎟️ Activities', other:'💳 Other' };
+  const categoryTotals = { flights:0, accommodation:0, food:0, activities:0, other:0 };
+  let hasCategoryData = false;
+  trips.forEach(t=>{
+    if(!t.costBreakdown) return;
+    Object.entries(t.costBreakdown).forEach(([key,val])=>{
+      if(typeof val === 'number'){ categoryTotals[key] += val; hasCategoryData = true; }
+    });
+  });
+  const catEl = document.getElementById('spendCategoryBreakdown');
+  catEl.innerHTML = '';
+  if(!hasCategoryData){
+    catEl.innerHTML = '<div class="empty-note">Break down a trip\'s cost by category to see this.</div>';
+  }else{
+    const sortedCats = Object.entries(categoryTotals).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    const maxCat = sortedCats.length ? sortedCats[0][1] : 1;
+    sortedCats.forEach(([key,total])=>{
+      catEl.appendChild(barRow(CATEGORY_LABELS[key], Math.round(total), maxCat, settings.currencySymbol));
+    });
+  }
 
   renderMilestones({
     tripsCount: trips.length, uniquePlaces, countriesCount: countries.size, continentsCount: continents.size,
     totalDays, flightsCount, cruisesCount, drivesCount, trainsCount, boatsCount
   });
   populateWrappedYearSelect();
+  populateCompanionWrappedSelect();
+  populateCompareYearSelects();
   renderCharts();
 }
 
@@ -2780,9 +3827,42 @@ const TRANSPORT_COLORS = {
   'Flight':'#3c6e71', 'Cruise':'#c9a227', 'Drive':'#a34a3a', 'Train':'#6b5b95', 'Boat':'#2a4f52'
 };
 
+/* Colorblind-friendly patterns: every chart segment is encoded by shape as
+   well as color, so distinguishing them never depends on color alone. */
+const CHART_PATTERN_TYPES = ['diag','dots','cross','horiz','vert','diag2','ring'];
+function patternTile(id, type, color){
+  const bg = `<rect width="8" height="8" fill="${color}"/>`;
+  let shape = '';
+  switch(type){
+    case 'diag':  shape = '<path d="M0,8 L8,0" stroke="#fff" stroke-width="1.5"/>'; break;
+    case 'diag2': shape = '<path d="M0,0 L8,8" stroke="#fff" stroke-width="1.5"/>'; break;
+    case 'dots':  shape = '<circle cx="4" cy="4" r="1.4" fill="#fff"/>'; break;
+    case 'cross': shape = '<path d="M0,4 L8,4 M4,0 L4,8" stroke="#fff" stroke-width="1.1"/>'; break;
+    case 'horiz': shape = '<path d="M0,2 L8,2 M0,6 L8,6" stroke="#fff" stroke-width="1.1"/>'; break;
+    case 'vert':  shape = '<path d="M2,0 L2,8 M6,0 L6,8" stroke="#fff" stroke-width="1.1"/>'; break;
+    case 'ring':  shape = '<circle cx="4" cy="4" r="2.4" fill="none" stroke="#fff" stroke-width="1.1"/>'; break;
+  }
+  return `<pattern id="${id}" width="8" height="8" patternUnits="userSpaceOnUse">${bg}${shape}</pattern>`;
+}
+/* Builds <defs> with one pattern per category (using that category's real
+   color as the tile background) and returns {defsHtml, ids: {key: patternId}} */
+function buildPatternDefs(prefix, categories){
+  const ids = {};
+  const patterns = categories.map(({key, color}, i)=>{
+    const type = CHART_PATTERN_TYPES[i % CHART_PATTERN_TYPES.length];
+    const id = `${prefix}-${i}`;
+    ids[key] = id;
+    return patternTile(id, type, color);
+  }).join('');
+  return { defsHtml: `<defs>${patterns}</defs>`, ids };
+}
+
 function renderCharts(){
   renderDistanceOverTimeChart();
+  renderAvgLengthChart();
   renderMonthHeatmap();
+  populateCalendarYearSelect();
+  renderCalendarHeatmap();
   renderTransportDonut();
   renderTripLengthHistogram();
   renderContinentStack();
@@ -2819,10 +3899,11 @@ function renderDistanceOverTimeChart(){
   const chartW = Math.max(240, (years.length - 1) * pointSpacing);
   const W = padL + chartW + padR;
   const maxVal = Math.max(...points, 1);
+  const yMax = maxVal * 1.15; // headroom so the tallest point isn't flush against the top edge
 
   const xAt = i => padL + (years.length===1 ? chartW/2 : (i/(years.length-1))*chartW);
   const chartH = H - padT - padB;
-  const yAtVal = v => padT + chartH - (v/maxVal)*chartH;
+  const yAtVal = v => padT + chartH - (v/yMax)*chartH;
 
   const linePath = points.map((v,i)=>`${i===0?'M':'L'}${xAt(i).toFixed(1)},${yAtVal(v).toFixed(1)}`).join(' ');
   const areaPath = linePath + ` L${xAt(points.length-1).toFixed(1)},${(padT+chartH).toFixed(1)} L${xAt(0).toFixed(1)},${(padT+chartH).toFixed(1)} Z`;
@@ -2837,7 +3918,7 @@ function renderDistanceOverTimeChart(){
     return `<text x="${xAt(i).toFixed(1)}" y="${H-6}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`;
   }).join('');
 
-  const yMaxLabel = `<text x="${padL-6}" y="${padT+4}" text-anchor="end" class="chart-tooltip-label">${Math.round(maxVal).toLocaleString()}</text>`;
+  const yMaxLabel = `<text x="${padL-6}" y="${(yAtVal(maxVal)+4).toFixed(1)}" text-anchor="end" class="chart-tooltip-label">${Math.round(maxVal).toLocaleString()}</text>`;
   const yZeroLabel = `<text x="${padL-6}" y="${padT+chartH}" text-anchor="end" class="chart-tooltip-label">0</text>`;
   const gridLine = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/><line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/>`;
 
@@ -2857,6 +3938,118 @@ function renderDistanceOverTimeChart(){
       ${yMaxLabel}${yZeroLabel}
     </svg>
     <div class="chart-legend"><span>Cumulative distance from home, ${unitWord}</span></div>
+  `;
+}
+
+/* --- 1b. Average trip length over time --- */
+function renderAvgLengthChart(){
+  const containerId = 'chartAvgLength';
+  const years = [...new Set(trips.map(t=>t.startDate.slice(0,4)))].sort();
+  if(!years.length){ emptyChart(containerId, 'No trips logged yet.'); return; }
+
+  const values = years.map(y=>{
+    const yearTrips = trips.filter(t=>t.startDate.slice(0,4)===y);
+    const totalDays = yearTrips.reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate), 0);
+    return yearTrips.length ? totalDays/yearTrips.length : 0;
+  });
+
+  const padL = 44, padB = 24, padT = 12, padR = 16;
+  const pointSpacing = 34;
+  const H = 160;
+  const chartW = Math.max(240, (years.length - 1) * pointSpacing);
+  const W = padL + chartW + padR;
+  const chartH = H - padT - padB;
+  const maxVal = Math.max(...values, 1);
+  const yMax = maxVal * 1.15; // headroom so the tallest point isn't flush against the top edge
+  const xAt = i => padL + (years.length===1 ? chartW/2 : (i/(years.length-1))*chartW);
+  const yAtVal = v => padT + chartH - (v/yMax)*chartH;
+
+  const linePath = values.map((v,i)=>`${i===0?'M':'L'}${xAt(i).toFixed(1)},${yAtVal(v).toFixed(1)}`).join(' ');
+  const circles = values.map((v,i)=>`<circle cx="${xAt(i).toFixed(1)}" cy="${yAtVal(v).toFixed(1)}" r="3.5" fill="#c9a227"><title>${years[i]}: ${(Math.round(v*10)/10)} days avg</title></circle>`).join('');
+
+  const labelStep = Math.max(1, Math.ceil(years.length / 8));
+  const xLabels = years.map((y,i)=>{
+    if(i % labelStep !== 0 && i !== years.length-1) return '';
+    return `<text x="${xAt(i).toFixed(1)}" y="${H-6}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`;
+  }).join('');
+  const yMaxLabel = `<text x="${padL-6}" y="${(yAtVal(maxVal)+4).toFixed(1)}" text-anchor="end" class="chart-tooltip-label">${Math.round(maxVal*10)/10}d</text>`;
+  const yZeroLabel = `<text x="${padL-6}" y="${padT+chartH}" text-anchor="end" class="chart-tooltip-label">0</text>`;
+  const gridLine = `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/><line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#ddd0ac" stroke-width="1"/>`;
+
+  document.getElementById(containerId).innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:none;">
+      ${gridLine}
+      <path d="${linePath}" fill="none" stroke="#c9a227" stroke-width="2"/>
+      ${circles}
+      ${xLabels}
+      ${yMaxLabel}${yZeroLabel}
+    </svg>
+    <div class="chart-legend"><span>Average days per trip, by year</span></div>
+  `;
+}
+
+/* --- Days travelled calendar (day-by-day, GitHub-style) --- */
+function populateCalendarYearSelect(){
+  const sel = document.getElementById('calendarYearSelect');
+  const years = [...new Set(trips.map(t=>t.startDate.slice(0,4)))].sort((a,b)=>b.localeCompare(a));
+  const current = sel.value;
+  sel.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join('');
+  if(years.includes(current)) sel.value = current;
+}
+document.getElementById('calendarYearSelect').addEventListener('change', renderCalendarHeatmap);
+
+function renderCalendarHeatmap(){
+  const containerId = 'chartCalendarHeatmap';
+  const year = document.getElementById('calendarYearSelect').value;
+  if(!year){ emptyChart(containerId, 'No trips logged yet.'); return; }
+  const yearNum = parseInt(year, 10);
+
+  const travelDays = new Set();
+  trips.forEach(t=>{
+    let d = new Date(t.startDate + 'T00:00:00');
+    const end = new Date(t.endDate + 'T00:00:00');
+    while(d <= end){
+      if(d.getFullYear() === yearNum) travelDays.add(d.toISOString().slice(0,10));
+      d.setDate(d.getDate() + 1);
+    }
+  });
+
+  const jan1 = new Date(yearNum, 0, 1);
+  const startPad = jan1.getDay();
+  const isLeap = (yearNum%4===0 && yearNum%100!==0) || yearNum%400===0;
+  const totalDaysInYear = isLeap ? 366 : 365;
+
+  const cellSize = 11, cellGap = 3;
+  const padL = 8, padT = 18;
+  const weeks = Math.ceil((startPad + totalDaysInYear) / 7);
+  const W = padL + weeks*(cellSize+cellGap);
+  const H = padT + 7*(cellSize+cellGap);
+
+  let cells = '';
+  let monthLabels = '';
+  let lastMonth = -1;
+  for(let i=0; i<totalDaysInYear; i++){
+    const date = new Date(yearNum, 0, 1+i);
+    const dow = date.getDay();
+    const cellIndex = startPad + i;
+    const week = Math.floor(cellIndex/7);
+    const x = padL + week*(cellSize+cellGap);
+    const y = padT + dow*(cellSize+cellGap);
+    const dateStr = date.toISOString().slice(0,10);
+    const traveling = travelDays.has(dateStr);
+    cells += `<rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${traveling?'#3c6e71':'#efe7d2'}"><title>${dateStr}${traveling?' — travelling':''}</title></rect>`;
+    if(date.getMonth() !== lastMonth){
+      lastMonth = date.getMonth();
+      monthLabels += `<text x="${x}" y="${padT-6}" class="chart-tooltip-label">${date.toLocaleString('en',{month:'short'})}</text>`;
+    }
+  }
+
+  document.getElementById(containerId).innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:none;">
+      ${monthLabels}
+      ${cells}
+    </svg>
+    <div class="chart-legend"><span>${travelDays.size} day${travelDays.size!==1?'s':''} travelling in ${year}</span></div>
   `;
 }
 
@@ -2893,12 +4086,15 @@ function renderTransportDonut(){
   const total = Object.values(counts).reduce((a,b)=>a+b,0);
   if(total === 0){ emptyChart(containerId, "Mark trips with a transport mode (flight, cruise, drive, train, boat) to see this chart."); return; }
 
+  const patternCategories = Object.keys(TRANSPORT_COLORS).map(key => ({ key, color: TRANSPORT_COLORS[key] }));
+  const { defsHtml, ids: patternIds } = buildPatternDefs('pat-donut', patternCategories);
+
   const r = 54, cx = 70, cy = 70, strokeW = 22;
   const circumference = 2*Math.PI*r;
   let offset = 0;
   const segments = Object.entries(counts).filter(([,c])=>c>0).map(([mode,c])=>{
     const len = (c/total)*circumference;
-    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${TRANSPORT_COLORS[mode]}" stroke-width="${strokeW}"
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="url(#${patternIds[mode]})" stroke-width="${strokeW}"
       stroke-dasharray="${len.toFixed(2)} ${(circumference-len).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}">
       <title>${mode}: ${c} trip${c!==1?'s':''}</title></circle>`;
     offset += len;
@@ -2911,6 +4107,7 @@ function renderTransportDonut(){
 
   document.getElementById(containerId).innerHTML = `
     <svg viewBox="0 0 140 140" width="140" height="140">
+      ${defsHtml}
       <g transform="rotate(-90 ${cx} ${cy})">${segments}</g>
       <text x="${cx}" y="${cy-2}" text-anchor="middle" font-family="JetBrains Mono, monospace" font-weight="700" font-size="20" fill="var(--ink)">${total}</text>
       <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="9" fill="var(--ink-soft)">trip legs</text>
@@ -2976,6 +4173,9 @@ function renderContinentStack(){
   const W = Math.max(280, years.length*46), H = 160, padB = 26, padT = 10, barGap = 14;
   const barW = (W - barGap*(years.length+1)) / years.length;
 
+  const patternCategories = continentsUsed.map(c => ({ key: c, color: CONTINENT_COLORS[c] || '#999' }));
+  const { defsHtml, ids: patternIds } = buildPatternDefs('pat-stack', patternCategories);
+
   const bars = years.map((y,i)=>{
     const x = barGap + i*(barW+barGap);
     let yCursor = H - padB;
@@ -2984,7 +4184,7 @@ function renderContinentStack(){
       if(!count) return '';
       const segH = (count/maxTotal) * (H-padB-padT);
       yCursor -= segH;
-      return `<rect x="${x.toFixed(1)}" y="${yCursor.toFixed(1)}" width="${barW.toFixed(1)}" height="${segH.toFixed(1)}" fill="${CONTINENT_COLORS[c]||'#999'}"><title>${y} — ${c}: ${count}</title></rect>`;
+      return `<rect x="${x.toFixed(1)}" y="${yCursor.toFixed(1)}" width="${barW.toFixed(1)}" height="${segH.toFixed(1)}" fill="url(#${patternIds[c]})"><title>${y} — ${c}: ${count}</title></rect>`;
     }).join('');
     return segments + `<text x="${(x+barW/2).toFixed(1)}" y="${H-8}" text-anchor="middle" class="chart-tooltip-label">${y}</text>`;
   }).join('');
@@ -2994,7 +4194,7 @@ function renderContinentStack(){
   ).join('');
 
   document.getElementById(containerId).innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:none;">${bars}</svg>
+    <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:none;">${defsHtml}${bars}</svg>
     <div class="chart-legend">${legend}</div>
   `;
 }
@@ -3011,6 +4211,43 @@ function populateWrappedYearSelect(){
     sel.value = currentSelection;
   }
 }
+
+function populateCompareYearSelects(){
+  const years = [...new Set(trips.map(t=>t.startDate.slice(0,4)))].sort((a,b)=>b.localeCompare(a));
+  ['compareYearA','compareYearB'].forEach(id=>{
+    const sel = document.getElementById(id);
+    const current = sel.value;
+    sel.innerHTML = years.map(y=>`<option value="${y}">${y}</option>`).join('');
+    if(years.includes(current)) sel.value = current;
+  });
+  if(years.length > 1 && !document.getElementById('compareYearB').value){
+    document.getElementById('compareYearB').value = years[1];
+  }
+}
+document.getElementById('compareYearsBtn').addEventListener('click', ()=>{
+  const yA = document.getElementById('compareYearA').value;
+  const yB = document.getElementById('compareYearB').value;
+  if(!yA || !yB) return;
+  const a = computeWrapped(yA), b = computeWrapped(yB);
+  const rows = [
+    ['🧳 Trips', a.tripsCount, b.tripsCount],
+    ['🌐 Countries', a.countries.size, b.countries.size],
+    ['🌍 Continents', a.continents.size, b.continents.size],
+    ['📆 Days travelled', a.totalDays, b.totalDays],
+    ['💰 Spend', a.spend > 0 ? settings.currencySymbol+Math.round(a.spend).toLocaleString() : '—', b.spend > 0 ? settings.currencySymbol+Math.round(b.spend).toLocaleString() : '—'],
+  ];
+  const html = `
+    <table class="compare-table">
+      <tr><th></th><th>${escapeHtml(yA)}</th><th>${escapeHtml(yB)}</th></tr>
+      ${rows.map(([label,va,vb])=>{
+        const numA = typeof va === 'number' ? va : parseFloat(String(va).replace(/[^0-9.]/g,'')) || 0;
+        const numB = typeof vb === 'number' ? vb : parseFloat(String(vb).replace(/[^0-9.]/g,'')) || 0;
+        return `<tr><td>${label}</td><td class="${numA>numB?'compare-winner':''}">${va}</td><td class="${numB>numA?'compare-winner':''}">${vb}</td></tr>`;
+      }).join('')}
+    </table>
+  `;
+  document.getElementById('compareYearsResult').innerHTML = html;
+});
 
 function computeWrapped(year){
   const yearTrips = trips.filter(t => t.startDate.slice(0,4) === year);
@@ -3029,12 +4266,54 @@ function computeWrapped(year){
     return (!best || d > best.days) ? { place:t.place, days:d } : best;
   }, null);
 
-  const spend = yearTrips.filter(t=>t.cost!==null && t.cost!==undefined).reduce((s,t)=>s+t.cost,0);
+  const spend = yearTrips.filter(t=>effectiveCost(t)!==null && effectiveCost(t)!==undefined).reduce((s,t)=>s+effectiveCost(t),0);
 
   return { year, tripsCount: yearTrips.length, countries, continents, totalDays, topCompanion, longest, spend };
 }
 
-function renderWrappedCard(year){
+function computeAllTimeShareRows(){
+  const uniquePlaces = new Set(trips.map(placeKey)).size;
+  const countries = new Set(trips.map(t=>t.countryCode || t.country).filter(Boolean));
+  const continents = new Set(trips.map(t=>effectiveContinent(t)).filter(Boolean));
+  const totalDays = trips.filter(t=>!isUpcoming(t)).reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate), 0);
+
+  const rows = [
+    ['🧳 Trips logged', trips.length],
+    ['📍 Places', uniquePlaces],
+    ['🌐 Countries', countries.size],
+    ['🌍 Continents', continents.size + ' / 7'],
+    ['📆 Days travelled', totalDays],
+  ];
+
+  const companionCounts = {};
+  trips.forEach(t=> (t.companions||[]).forEach(name=>{ companionCounts[name] = (companionCounts[name]||0)+1; }));
+  const topCompanion = Object.entries(companionCounts).sort((a,b)=>b[1]-a[1])[0];
+  if(topCompanion) rows.push(['👥 Travelled with most', `${topCompanion[0]} (${topCompanion[1]} trips)`]);
+
+  const placeCounts = {}, placeNames = {};
+  trips.forEach(t=>{ const k=placeKey(t); placeCounts[k]=(placeCounts[k]||0)+1; placeNames[k]=t.place; });
+  const topPlace = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1])[0];
+  if(topPlace && topPlace[1] > 1) rows.push(['🏆 Most visited', `${placeNames[topPlace[0]]} (×${topPlace[1]})`]);
+
+  const tripsWithCost = trips.filter(t => effectiveCost(t) !== null && effectiveCost(t) !== undefined);
+  if(tripsWithCost.length){
+    const totalSpend = tripsWithCost.reduce((s,t)=>s+effectiveCost(t), 0);
+    rows.push(['💰 Total spend', settings.currencySymbol + Math.round(totalSpend).toLocaleString()]);
+  }
+  return rows;
+}
+document.getElementById('shareAllTimeBtn').addEventListener('click', (e)=>{
+  const btn = e.currentTarget;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ …';
+  generateStatsShareCanvas('My Travel Stats', computeAllTimeShareRows())
+    .then(canvas => downloadOrShareCanvas(canvas, 'waypoints-my-stats.png', 'My Waypoints stats'))
+    .catch(()=> alert("Couldn't generate the image — please try again."))
+    .finally(()=>{ btn.disabled = false; btn.textContent = originalLabel; });
+});
+
+function computeWrappedRows(year){
   const w = computeWrapped(year);
   const rows = [
     ['🧳 Trips', w.tripsCount],
@@ -3042,31 +4321,110 @@ function renderWrappedCard(year){
     ['🌍 Continents', w.continents.size],
     ['📆 Days travelled', w.totalDays],
   ];
-  if(w.topCompanion) rows.push(['👥 Travelled with most', `${escapeHtml(w.topCompanion[0])} (${w.topCompanion[1]} trips)`]);
-  if(w.longest) rows.push(['🏆 Longest trip', `${escapeHtml(w.longest.place)} (${w.longest.days} days)`]);
-  if(w.spend > 0) rows.push(['💰 Spent', `${escapeHtml(settings.currencySymbol)}${Math.round(w.spend).toLocaleString()}`]);
+  if(w.topCompanion) rows.push(['👥 Travelled with most', `${w.topCompanion[0]} (${w.topCompanion[1]} trips)`]);
+  if(w.longest) rows.push(['🏆 Longest trip', `${w.longest.place} (${w.longest.days} days)`]);
+  if(w.spend > 0) rows.push(['💰 Spent', `${settings.currencySymbol}${Math.round(w.spend).toLocaleString()}`]);
+  return rows;
+}
 
+function getAllCompanionNames(){
+  const names = new Set(settings.companions);
+  trips.forEach(t => (t.companions||[]).forEach(n => names.add(n)));
+  return [...names].sort();
+}
+function populateCompanionWrappedSelect(){
+  const sel = document.getElementById('companionWrappedSelect');
+  const names = getAllCompanionNames();
+  const current = sel.value;
+  sel.innerHTML = names.length
+    ? names.map(n => `<option value="${escapeAttr(n)}">${escapeHtml(n)}</option>`).join('')
+    : '<option value="">Add companions first</option>';
+  if(names.includes(current)) sel.value = current;
+}
+function computeCompanionRows(name){
+  const companionTrips = trips.filter(t => (t.companions||[]).includes(name));
+  const countries = new Set(companionTrips.map(t=>t.country).filter(Boolean));
+  const continents = new Set(companionTrips.map(t=>effectiveContinent(t)).filter(Boolean));
+  const totalDays = companionTrips.reduce((sum,t)=>sum+dayCount(t.startDate,t.endDate), 0);
+  const sortedByDate = [...companionTrips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const first = sortedByDate[0];
+
+  const placeCounts = {}, placeNames = {};
+  companionTrips.forEach(t=>{ const k=placeKey(t); placeCounts[k]=(placeCounts[k]||0)+1; placeNames[k]=t.place; });
+  const topPlace = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1])[0];
+
+  const rows = [
+    ['🧳 Trips together', companionTrips.length],
+    ['🌐 Countries together', countries.size],
+    ['🌍 Continents together', continents.size],
+    ['📆 Days together', totalDays],
+  ];
+  if(first) rows.push(['🎉 First trip together', `${first.place} (${first.startDate})`]);
+  if(topPlace && topPlace[1] > 1) rows.push(['🏆 Most visited together', `${placeNames[topPlace[0]]} (×${topPlace[1]})`]);
+  return rows;
+}
+
+let currentWrappedShare = null; // { title, tagline, rows, filenameSuffix }
+
+let lastFocusedBeforeModal = null;
+function showRecapModal(title, tagline, rows, filenameSuffix){
+  currentWrappedShare = { title, rows, filenameSuffix };
   document.getElementById('wrappedContent').innerHTML = `
-    <h2>${year}</h2>
-    <div class="wrapped-tagline">Your year in travel</div>
-    ${rows.map(([label,value])=>`<div class="wrapped-stat-row"><span class="wrapped-label">${label}</span><span class="wrapped-value">${value}</span></div>`).join('')}
+    <h2>${escapeHtml(title)}</h2>
+    <div class="wrapped-tagline">${escapeHtml(tagline)}</div>
+    ${rows.map(([label,value])=>`<div class="wrapped-stat-row"><span class="wrapped-label">${label}</span><span class="wrapped-value">${escapeHtml(String(value))}</span></div>`).join('')}
   `;
+  lastFocusedBeforeModal = document.activeElement;
+  document.getElementById('wrappedOverlay').classList.add('show');
+  document.getElementById('closeWrappedBtn').focus();
 }
 
 document.getElementById('viewWrappedBtn').addEventListener('click', ()=>{
   const year = document.getElementById('wrappedYearSelect').value;
   if(!year) return;
-  renderWrappedCard(year);
-  document.getElementById('wrappedOverlay').classList.add('show');
+  showRecapModal(year + ' Wrapped', 'Your year in travel', computeWrappedRows(year), 'wrapped-' + year);
 });
-document.getElementById('closeWrappedBtn').addEventListener('click', ()=>{
+document.getElementById('viewCompanionWrappedBtn').addEventListener('click', ()=>{
+  const name = document.getElementById('companionWrappedSelect').value;
+  if(!name) return;
+  showRecapModal(name, 'Adventures together', computeCompanionRows(name), 'companion-' + name.toLowerCase().replace(/[^a-z0-9]+/g,'-'));
+});
+document.getElementById('shareWrappedBtn').addEventListener('click', (e)=>{
+  if(!currentWrappedShare) return;
+  const btn = e.currentTarget;
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ …';
+  generateStatsShareCanvas(currentWrappedShare.title, currentWrappedShare.rows)
+    .then(canvas => downloadOrShareCanvas(canvas, `waypoints-${currentWrappedShare.filenameSuffix}.png`, `Waypoints ${currentWrappedShare.title}`))
+    .catch(()=> alert("Couldn't generate the image — please try again."))
+    .finally(()=>{ btn.disabled = false; btn.textContent = originalLabel; });
+});
+function closeRecapModal(){
   document.getElementById('wrappedOverlay').classList.remove('show');
-});
+  if(lastFocusedBeforeModal && typeof lastFocusedBeforeModal.focus === 'function'){
+    lastFocusedBeforeModal.focus();
+  }
+}
+document.getElementById('closeWrappedBtn').addEventListener('click', closeRecapModal);
 document.getElementById('wrappedOverlay').addEventListener('click', e=>{
-  if(e.target.id === 'wrappedOverlay') document.getElementById('wrappedOverlay').classList.remove('show');
+  if(e.target.id === 'wrappedOverlay') closeRecapModal();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key !== 'Escape') return;
+  if(document.getElementById('wrappedOverlay').classList.contains('show')){
+    closeRecapModal();
+  }
 });
 
-function barRow(label, count, max, prefix){
+function goToTripsFilteredBy(term){
+  switchView('trips');
+  document.getElementById('tripSearch').value = term;
+  searchQuery = term.trim().toLowerCase();
+  renderTrips();
+}
+
+function barRow(label, count, max, prefix, filterTerm){
   const row = document.createElement('div');
   row.className = 'bar-row';
   const pct = Math.max(6, Math.round((count/max)*100));
@@ -3076,6 +4434,11 @@ function barRow(label, count, max, prefix){
     <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
     <div class="bar-count mono">${display}</div>
   `;
+  if(filterTerm){
+    row.style.cursor = 'pointer';
+    row.title = `Show trips: ${filterTerm}`;
+    row.addEventListener('click', ()=> goToTripsFilteredBy(filterTerm));
+  }
   return row;
 }
 
