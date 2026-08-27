@@ -1039,12 +1039,16 @@
       <ol style="font-size:.85rem; line-height:1.7; padding-left:20px; margin:0;">
         <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and create a new project (any name).</li>
         <li>Search for and enable the <strong>Google Drive API</strong> for that project.</li>
-        <li>Go to <strong>APIs &amp; Services → OAuth consent screen</strong>, choose "External," fill in the required fields, and add your own Google account as a test user.</li>
+        <li>Go to <strong>APIs &amp; Services → OAuth consent screen</strong>, choose "External," and fill in the required fields.</li>
+        <li>On that same OAuth consent screen page, scroll to <strong>Test users → + Add users</strong>, and add every Google account you'll actually sign in with (including your own). This step is easy to miss and is the #1 cause of sign-in errors.</li>
         <li>Go to <strong>APIs &amp; Services → Credentials → Create Credentials → OAuth client ID</strong>, choose "Web application."</li>
         <li>Under <strong>Authorized JavaScript origins</strong>, add the exact URL Waypoints is hosted at (e.g. <code>https://yourusername.github.io</code> — no trailing slash or path).</li>
         <li>Copy the Client ID it gives you, paste it into the Google Drive sync box in Settings, and click Connect.</li>
       </ol>
-      <p style="font-size:.78rem; color:var(--ink-soft); margin-top:10px;">While your app is in "Testing" mode in Google Cloud, only accounts you've added as test users can sign in — which is fine, since this is just for your own devices.</p>
+      <p style="font-size:.78rem; color:var(--ink-soft); margin-top:10px;">While your app is in "Testing" mode in Google Cloud, only accounts on the Test users list can sign in — which is fine, since this is just for your own devices.</p>
+      <div style="background:var(--paper-alt); border:1px dashed var(--line); border-radius:8px; padding:10px 12px; margin-top:10px; font-size:.8rem;">
+        <strong>Seeing "Access blocked… has not completed the Google verification process"?</strong> That means step 4 above wasn't done for the account you're signing in with. Add it under Test users and try again.
+      </div>
     </div>
 
     <div class="about-card">
@@ -2376,7 +2380,11 @@ document.getElementById('driveConnectBtn').addEventListener('click', ()=>{
       scope: DRIVE_SCOPE,
       callback: (response)=>{
         if(response.error){
-          alert("Google sign-in didn't complete: " + response.error);
+          if(response.error === 'access_denied'){
+            alert("Google blocked the sign-in because this Google account isn't approved to test your app yet.\n\nFix: in Google Cloud Console, go to APIs & Services → OAuth consent screen → Test users → Add users, and add the exact Google account you're signing in with. Then try Connect again.");
+          }else{
+            alert("Google sign-in didn't complete: " + response.error);
+          }
           return;
         }
         driveAccessToken = response.access_token;
