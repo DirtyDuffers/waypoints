@@ -81,7 +81,13 @@
     position:sticky; top:0; z-index:500;
   }
   header.top h1{color:#f6f1e4; font-size:1.3rem; font-weight:600; display:flex; align-items:center; gap:9px;}
-  header.top h1 img{width:28px; height:28px; border-radius:8px; display:block;}
+  header.top h1 img{width:28px; height:28px; border-radius:8px; display:block; flex-shrink:0;}
+  .logo-home-btn{
+    background:none; border:none; padding:0; margin:0; cursor:pointer; font:inherit; color:inherit;
+    display:flex; align-items:center; min-width:0; flex-shrink:1; -webkit-tap-highlight-color:transparent;
+  }
+  .logo-home-btn:hover h1{opacity:.85;}
+  .logo-home-btn h1 span{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   nav.tabs{display:flex; gap:4px;}
   nav.tabs button{
     background:none; border:none; color:#f6f1e4; opacity:.6;
@@ -300,12 +306,18 @@
   .save-confirm.show{opacity:1;}
 
   @media (max-width:560px){
-    header.top{padding:12px 14px;}
+    header.top{padding:10px 12px;}
     header.top h1{font-size:1.05rem;}
-    nav.tabs button{padding:7px 10px; font-size:.85rem;}
+    nav.tabs{gap:0;}
+    nav.tabs button{padding:6px 8px; font-size:.8rem;}
+    .header-right{gap:0;}
     .theme-toggle-header{padding:5px 6px; font-size:.95rem;}
     .trip-card{flex-direction:column;}
     .trip-actions{flex-direction:row;}
+  }
+  @media (max-width:420px){
+    header.top h1 span{display:none;}
+    nav.tabs button{padding:6px 7px; font-size:.76rem;}
   }
 
   @media print{
@@ -380,7 +392,7 @@
   .passport-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:18px 14px; padding:10px 0;}
   .passport-stamp{
     aspect-ratio:1; display:flex; align-items:center; justify-content:center;
-    padding:6px; cursor:default;
+    padding:6px; cursor:default; filter:drop-shadow(0 2px 4px rgba(0,0,0,.25));
   }
   .passport-stamp:nth-child(4n+1){transform:rotate(-6deg);}
   .passport-stamp:nth-child(4n+2){transform:rotate(4deg);}
@@ -2354,6 +2366,7 @@ function applyTheme(){
 
 // Header quick-toggle: an immediate, persisted action — flips between light
 // and dark explicitly (stepping out of "follow device" if that was active).
+document.getElementById('logoHomeBtn').addEventListener('click', ()=> switchView('trips'));
 document.getElementById('headerThemeToggle').addEventListener('click', ()=>{
   settings.themePreference = effectiveIsDark() ? 'light' : 'dark';
   saveSettings(settings);
@@ -3079,7 +3092,7 @@ function buildStampSvg(trip){
     const topPath = `M ${cx-r},${cy} A ${r},${r} 0 0 1 ${cx+r},${cy}`;
     const botPath = `M ${cx-r},${cy} A ${r},${r} 0 0 0 ${cx+r},${cy}`;
     inner = `
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="3" stroke-dasharray="14,3,7,3"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="#fffdf7" stroke="${color}" stroke-width="3" stroke-dasharray="14,3,7,3"/>
       ${shape==='double-circle' ? `<circle cx="${cx}" cy="${cy}" r="${r-9}" fill="none" stroke="${color}" stroke-width="1.5"/>` : ''}
       <path id="${uid}t" d="${topPath}" fill="none"/>
       <path id="${uid}b" d="${botPath}" fill="none"/>
@@ -3094,7 +3107,7 @@ function buildStampSvg(trip){
     const topPath = `M ${cx-rx},${cy} A ${rx},${ry} 0 0 1 ${cx+rx},${cy}`;
     const botPath = `M ${cx-rx},${cy} A ${rx},${ry} 0 0 0 ${cx+rx},${cy}`;
     inner = `
-      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="none" stroke="${color}" stroke-width="2.5"/>
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fffdf7" stroke="${color}" stroke-width="2.5"/>
       <path id="${uid}t" d="${topPath}" fill="none"/>
       <path id="${uid}b" d="${botPath}" fill="none"/>
       <text font-size="9" font-weight="700" letter-spacing="1.2" fill="${color}"><textPath href="#${uid}t" startOffset="50%" text-anchor="middle">${escapeHtml(country.slice(0,22))}</textPath></text>
@@ -3103,7 +3116,7 @@ function buildStampSvg(trip){
     `;
   }else if(shape === 'hex'){
     inner = `
-      <polygon points="${hexPoints(cx,cy,58)}" fill="none" stroke="${color}" stroke-width="3"/>
+      <polygon points="${hexPoints(cx,cy,58)}" fill="#fffdf7" stroke="${color}" stroke-width="3"/>
       <text x="${cx}" y="${cy-26}" font-size="8.5" font-weight="700" text-anchor="middle" fill="${color}" letter-spacing="1">${escapeHtml(country.slice(0,18))}</text>
       <text x="${cx}" y="${cy+2}" font-size="14" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
       <line x1="${cx-30}" y1="${cy+12}" x2="${cx+30}" y2="${cy+12}" stroke="${color}" stroke-width="1"/>
@@ -3111,7 +3124,7 @@ function buildStampSvg(trip){
     `;
   }else{ // rect
     inner = `
-      <polygon points="${cutRectPoints(cx,cy,108,84,14)}" fill="none" stroke="${color}" stroke-width="3"/>
+      <polygon points="${cutRectPoints(cx,cy,108,84,14)}" fill="#fffdf7" stroke="${color}" stroke-width="3"/>
       <text x="${cx}" y="${cy-22}" font-size="8.5" font-weight="700" text-anchor="middle" fill="${color}" letter-spacing="1">${escapeHtml(country.slice(0,18))}</text>
       <text x="${cx}" y="${cy+4}" font-size="15" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
       <text x="${cx}" y="${cy+26}" font-size="8.5" text-anchor="middle" fill="${color}" letter-spacing="0.5">${escapeHtml(date)}</text>
