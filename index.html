@@ -2909,7 +2909,7 @@ async function generateScrapbookPptx(){
       let stampPng = null;
       if(!upcoming){
         // You don't get the stamp until you've actually been there
-        try{ stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 280), 280); }catch(e){ /* decorative — continue without it */ }
+        try{ stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 280, true), 280); }catch(e){ /* decorative — continue without it */ }
       }
 
       const titleW = upcoming ? 7.6 : 9.5;
@@ -3254,7 +3254,7 @@ async function generateScrapbookPdf(){
       if(!upcoming){
         // You don't get the stamp until you've actually taken the trip
         try{
-          const stampImg = await embedRasterSvg(buildStampSvg(t, 200), 90, 90);
+          const stampImg = await embedRasterSvg(buildStampSvg(t, 200, true), 90, 90);
           p.drawImage(stampImg, { x:HALF_W-130, y:PAGE_H-130, width:90, height:90 });
         }catch(e){ /* decorative — continue without it */ }
       }
