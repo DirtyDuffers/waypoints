@@ -3132,6 +3132,32 @@ function safeDrawText(page, text, opts){
     try{ page.drawText(safe.replace(/[^\x00-\x7F]/g, ''), opts); }catch(e2){ /* give up on just this one string rather than fail the whole document */ }
   }
 }
+// A wrapped multi-line title would need extra vertical room we haven't
+// reserved next to fixed-position elements below it, so long titles are
+// truncated to a single line instead — predictable layout beats fitting
+// every character.
+function truncateToWidth(font, text, size, maxWidth){
+  if(font.widthOfTextAtSize(text, size) <= maxWidth) return text;
+  let t = text;
+  while(t.length > 0 && font.widthOfTextAtSize(t + '…', size) > maxWidth){
+    t = t.slice(0, -1);
+  }
+  return t + '…';
+}
+// pdf-lib rotates images/rectangles around the (x,y) point you give it, which
+// is normally that shape's own bottom-left corner — so passing a rotation
+// straight through swings the whole thing off to one side instead of tilting
+// it in place. This computes the adjusted (x,y) so the shape rotates around
+// its own visual center, given the CENTER point you actually want.
+function rotatedCornerFor(centerX, centerY, w, h, rotateDeg){
+  const rad = rotateDeg * Math.PI / 180;
+  const cos = Math.cos(rad), sin = Math.sin(rad);
+  const halfW = w/2, halfH = h/2;
+  return {
+    x: centerX - (halfW*cos - halfH*sin),
+    y: centerY - (halfW*sin + halfH*cos)
+  };
+}
 function pdfBarChartSvg(w, h, labels, values, color, textColor, rotateLabels){
   const max = Math.max(...values, 1);
   const padL=34, padB= rotateLabels ? 40 : 24, padT=8;
@@ -3183,7 +3209,7 @@ async function generateScrapbookPdf(){
   const originalLabel = btn.textContent;
   btn.disabled = true;
 
-  const { PDFDocument, StandardFonts } = PDFLib;
+  const { PDFDocument, StandardFonts, degrees } = PDFLib;
   const SB = { ink:'#1C2B3A', paper:'#F6F1E4', paperPage:'#F3EAD9', tealDark:'#2A4F52', gold:'#C9A227', inkSoft:'#4A5A68', teal:'#3C6E71', rust:'#A34A3A' };
   const rgbc = (hex) => hexToRgb01(hex, PDFLib);
   const HALF_W = 432, PAGE_H = 648; // 6x9in per page, a common book trim size — spread is 12x9in
@@ -3237,38 +3263,49 @@ async function generateScrapbookPdf(){
 
       const hasPhoto = !!t.photo;
       const upcoming = isUpcoming(t);
+      const seed = hashString(t.id);
 
       // LEFT page: photo (or placeholder, for any trip missing one — past or
-      // future), and a stamp (only for trips already taken)
+      // future), given a slight natural-looking tilt when it's a real photo,
+      // like something actually stuck into a scrapbook rather than perfectly
+      // aligned. Angle is deterministic per trip (same file, same look every
+      // time) rather than truly random.
       const size = HALF_W - 100;
       if(hasPhoto){
         try{
           const img = await embedJpegDataUrl(t.photo);
-          p.drawRectangle({ x:42, y:PAGE_H-size-58, width:size+16, height:size+16, color:rgbc('#FFFFFF') });
-          p.drawImage(img, { x:50, y:PAGE_H-size-50, width:size, height:size });
+          const photoRotateDeg = (seed % 9) - 4; // -4..+4 degrees, still clearly right-way-up
+          const centerX = 50 + size/2, centerY = (PAGE_H-size-50) + size/2;
+          const framePos = rotatedCornerFor(centerX, centerY, size+16, size+16, photoRotateDeg);
+          const photoPos = rotatedCornerFor(centerX, centerY, size, size, photoRotateDeg);
+          p.drawRectangle({ x:framePos.x, y:framePos.y, width:size+16, height:size+16, color:rgbc('#FFFFFF'), rotate: degrees(photoRotateDeg) });
+          p.drawImage(img, { x:photoPos.x, y:photoPos.y, width:size, height:size, rotate: degrees(photoRotateDeg) });
         }catch(e){ /* if the photo can't be embedded, continue without it */ }
       }else{
         p.drawRectangle({ x:50, y:PAGE_H/2-90, width:HALF_W-100, height:180, borderColor:rgbc(SB.gold), borderWidth:1.5, borderDashArray:[5,4] });
         safeDrawText(p, 'PHOTO GOES HERE', { x:HALF_W/2-72, y:PAGE_H/2, size:11, font:fontItalic, color:rgbc('#B0A48A') });
-      }
-      if(!upcoming){
-        // You don't get the stamp until you've actually taken the trip
-        try{
-          const stampImg = await embedRasterSvg(buildStampSvg(t, 200, true), 90, 90);
-          p.drawImage(stampImg, { x:HALF_W-130, y:PAGE_H-130, width:90, height:90 });
-        }catch(e){ /* decorative — continue without it */ }
       }
       if(upcoming){
         p.drawRectangle({ x:HALF_W-140, y:PAGE_H-52, width:100, height:26, color:rgbc(SB.gold) });
         safeDrawText(p, 'UPCOMING', { x:HALF_W-130, y:PAGE_H-44, size:9, font:fontB, color:rgbc(SB.ink) });
       }
 
-      // RIGHT page: details
+      // RIGHT page: details, with the stamp (only for trips already taken)
+      // tucked in the top-right corner, clear of the title text
       const rx = HALF_W + 40;
-      safeDrawText(p, t.place, { x:rx, y:PAGE_H-60, size:20, font:fontSerif, color:rgbc(SB.ink) });
-      safeDrawText(p, t.country || effectiveContinent(t) || '', { x:rx, y:PAGE_H-82, size:10, font:fontR, color:rgbc(SB.tealDark) });
+      const stampSize = 85;
+      const titleMaxWidth = (SPREAD_W - stampSize - 30) - rx;
+      safeDrawText(p, truncateToWidth(fontSerif, sanitizeForPdfFont(t.place), 20, titleMaxWidth), { x:rx, y:PAGE_H-60, size:20, font:fontSerif, color:rgbc(SB.ink) });
+      safeDrawText(p, truncateToWidth(fontR, sanitizeForPdfFont(t.country || effectiveContinent(t) || ''), 10, titleMaxWidth), { x:rx, y:PAGE_H-82, size:10, font:fontR, color:rgbc(SB.tealDark) });
       const days = dayCount(t.startDate, t.endDate);
-      safeDrawText(p, `${t.startDate} to ${t.endDate}   -   ${days} day${days!==1?'s':''}`, { x:rx, y:PAGE_H-100, size:9, font:fontR, color:rgbc(SB.inkSoft) });
+      safeDrawText(p, `${t.startDate} to ${t.endDate}   -   ${days} day${days!==1?'s':''}`, { x:rx, y:PAGE_H-100, size:9, font:fontR, color:rgbc(SB.inkSoft), maxWidth:titleMaxWidth });
+      if(!upcoming){
+        // You don't get the stamp until you've actually taken the trip
+        try{
+          const stampImg = await embedRasterSvg(buildStampSvg(t, 200, true), stampSize, stampSize);
+          p.drawImage(stampImg, { x:SPREAD_W-stampSize-25, y:PAGE_H-stampSize-20, width:stampSize, height:stampSize });
+        }catch(e){ /* decorative — continue without it */ }
+      }
 
       const dist = tripDistances(t);
       const rows = [];
