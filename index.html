@@ -2839,7 +2839,7 @@ async function generateScrapbookPptx(){
   const originalLabel = btn.textContent;
   btn.disabled = true;
 
-  const SB = { ink:'1C2B3A', paper:'F6F1E4', tealDark:'2A4F52', gold:'C9A227', inkSoft:'4A5A68', teal:'3C6E71', rust:'A34A3A' };
+  const SB = { ink:'1C2B3A', paper:'F6F1E4', paperAlt:'EFE7D2', tealDark:'2A4F52', gold:'C9A227', inkSoft:'4A5A68', teal:'3C6E71', rust:'A34A3A' };
   const PAGE_W = 13.33, PAGE_H = 7.5;
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';
@@ -3055,6 +3055,49 @@ async function generateScrapbookPptx(){
       }
     }
 
+    // ---------- FULL DASHBOARD: 6 mini charts + calendar strip ----------
+    btn.textContent = `⏳ Building your full dashboard…`;
+    s = pptx.addSlide();
+    s.background = { color: SB.paper };
+    s.addText('The Full Dashboard', { x:0.5, y:0.25, w:12.33, h:0.5, fontFace:'Georgia', fontSize:20, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+
+    const dd = computeDashboardData(sorted);
+    const tileW = 3.98, tileH = 2.35, gapX = 0.145, gridX0 = 0.5, gridY0 = 0.85;
+    async function placeTile(col, row, title, svgBuilder){
+      const x = gridX0 + col*(tileW+gapX), y = gridY0 + row*(tileH+0.15);
+      s.addText(title, { x, y, w:tileW, h:0.25, fontFace:'Calibri', fontSize:10, bold:true, color:SB.inkSoft, isTextBox:true, margin:0 });
+      try{
+        const svg = svgBuilder();
+        const img = await rasterizeSvgToPngDataUrl(svg, Math.round(tileW*140), Math.round((tileH-0.25)*140));
+        s.addImage({ data: img, x, y:y+0.25, w:tileW, h:tileH-0.25 });
+      }catch(e){ /* skip this one tile rather than fail the whole dashboard */ }
+    }
+
+    await placeTile(0, 0, '📏 Distance over time', () =>
+      miniLineChartSvg(560, 296, dd.years, dd.distanceOverTime, SB.gold, SB.ink));
+    await placeTile(1, 0, '📏 Average trip length over time', () =>
+      miniLineChartSvg(560, 296, dd.years, dd.avgLengthOverTime, SB.teal, SB.ink));
+    await placeTile(2, 0, '🗓️ Trips by month', () =>
+      pdfBarChartSvg(560, 296, dd.monthNames, dd.monthCounts, SB.rust, SB.ink, false));
+    await placeTile(0, 1, '🚦 How you travel', () => {
+      const entries = Object.entries(dd.modeCounts).filter(([,c])=>c>0);
+      return pdfPieChartSvg(560, 296, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink);
+    });
+    await placeTile(1, 1, '📏 Trip length', () =>
+      pdfBarChartSvg(560, 296, dd.lengthBuckets.map(b=>b[0]), dd.lengthBuckets.map(b=>b[1]), SB.tealDark, SB.ink, false));
+    await placeTile(2, 1, '🌍 By continent', () => {
+      const entries = Object.entries(dd.continentCounts).sort((a,b)=>b[1]-a[1]);
+      return pdfPieChartSvg(560, 296, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.ink);
+    });
+
+    const calY = gridY0 + 2*(tileH+0.15);
+    s.addText(`📅 Days travelled calendar — ${dd.calendarYear}`, { x:0.5, y:calY, w:12.33, h:0.25, fontFace:'Calibri', fontSize:10, bold:true, color:SB.inkSoft, isTextBox:true, margin:0 });
+    try{
+      const calSvg = miniCalendarHeatmapSvg(1720, 190, dd.calendarYear, dd.travelDaySet, SB.teal, SB.paperAlt);
+      const calImg = await rasterizeSvgToPngDataUrl(calSvg, 1720, 190);
+      s.addImage({ data: calImg, x:0.5, y:calY+0.25, w:12.33, h:1.2 });
+    }catch(e){ /* decorative — continue without it */ }
+
     // ---------- PASSPORT STAMPS PAGE ----------
     btn.textContent = `⏳ Building your stamp page…`;
     s = pptx.addSlide();
@@ -3082,6 +3125,28 @@ async function generateScrapbookPptx(){
         const stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 300, true), 300);
         s.addImage({ data: stampPng, x: cxPos-stampSize/2, y: cyPos-stampSize/2, w: stampSize, h: stampSize, rotate: rotation });
       }catch(e){ /* skip this one stamp rather than fail the whole page */ }
+    }
+
+    // ---------- COUNTRY CHECKLIST, ONE SLIDE PER CONTINENT ----------
+    const checklistCounts = countryVisitCounts();
+    let checklistI = 0;
+    for(const [continent, list] of Object.entries(COUNTRY_LIST)){
+      checklistI++;
+      btn.textContent = `⏳ Building country checklist (${checklistI}/${Object.keys(COUNTRY_LIST).length})…`;
+      s = pptx.addSlide();
+      s.background = { color: SB.paper };
+      const visitedCount = list.filter(([code])=>checklistCounts[code]>0).length;
+      s.addText(`Country Checklist — ${continent}`, { x:0.5, y:0.3, w:12.33, h:0.5, fontFace:'Georgia', fontSize:22, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+      s.addText(`${visitedCount} / ${list.length} visited`, { x:0.5, y:0.78, w:12.33, h:0.3, fontFace:'Calibri', fontSize:12, color:SB.tealDark, isTextBox:true, margin:0 });
+
+      const cols = 4, colW = 12.33/cols, rowH = 0.28;
+      list.forEach(([code,name], i)=>{
+        const col = i % cols, row = Math.floor(i/cols);
+        const x = 0.5 + col*colW, y = 1.25 + row*rowH;
+        const visited = checklistCounts[code] > 0;
+        const label = visited ? `${name}  (×${checklistCounts[code]})` : name;
+        s.addText(label, { x, y, w:colW-0.1, h:rowH-0.02, fontFace:'Calibri', fontSize:9.5, bold:visited, color: visited ? SB.tealDark : 'B0A48A', isTextBox:true, margin:0 });
+      });
     }
 
     // ---------- END SLIDE ----------
@@ -3200,6 +3265,53 @@ function pdfPieChartSvg(w, h, labels, values, colors, textColor){
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${slices}${legend}</svg>`;
 }
+function miniLineChartSvg(w, h, labels, values, color, textColor, cumulative){
+  const padL=32, padB=18, padT=10, padR=6;
+  const chartW = w-padL-padR, chartH = h-padT-padB;
+  const maxV = Math.max(...values, 1) * 1.15;
+  const pts = values.map((v,i)=>{
+    const x = padL + (values.length<=1 ? chartW/2 : (i/(values.length-1))*chartW);
+    const y = padT + chartH - (v/maxV)*chartH;
+    return [x,y];
+  });
+  const path = pts.map(([x,y],i)=>`${i===0?'M':'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const dots = pts.map(([x,y])=>`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" fill="${color}"/>`).join('');
+  const labelStep = Math.max(1, Math.ceil(labels.length/6));
+  const xLabels = labels.map((l,i)=>{
+    if(i % labelStep !== 0 && i !== labels.length-1) return '';
+    return `<text x="${pts[i][0].toFixed(1)}" y="${h-4}" font-size="7" fill="${textColor}" text-anchor="middle">${escapeHtml(String(l))}</text>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+    <line x1="${padL}" y1="${padT+chartH}" x2="${w-padR}" y2="${padT+chartH}" stroke="${textColor}" stroke-width="1" opacity="0.4"/>
+    <path d="${path}" fill="none" stroke="${color}" stroke-width="2"/>${dots}${xLabels}
+  </svg>`;
+}
+function miniCalendarHeatmapSvg(w, h, year, travelDaySet, color, bgColor){
+  const jan1 = new Date(year,0,1);
+  const startPad = jan1.getDay();
+  const isLeap = (year%4===0 && year%100!==0) || year%400===0;
+  const totalDays = isLeap ? 366 : 365;
+  const cols = Math.ceil((startPad+totalDays)/7);
+  const cellSize = Math.min((w-30)/cols, (h-24)/7);
+  const gap = cellSize*0.18;
+  let cells = '', monthLabels = '', lastMonth = -1;
+  for(let i=0;i<totalDays;i++){
+    const date = new Date(year,0,1+i);
+    const dow = date.getDay();
+    const cellIndex = startPad+i;
+    const col = Math.floor(cellIndex/7);
+    const x = 24 + col*(cellSize+gap);
+    const y = 16 + dow*(cellSize+gap);
+    const dateStr = date.toISOString().slice(0,10);
+    const traveling = travelDaySet.has(dateStr);
+    cells += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cellSize.toFixed(1)}" height="${cellSize.toFixed(1)}" rx="1" fill="${traveling?color:bgColor}"/>`;
+    if(date.getMonth() !== lastMonth){
+      lastMonth = date.getMonth();
+      monthLabels += `<text x="${x.toFixed(1)}" y="10" font-size="7" fill="${color}">${date.toLocaleString('en',{month:'short'})}</text>`;
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">${monthLabels}${cells}</svg>`;
+}
 
 async function generateScrapbookPdf(){
   const btn = document.getElementById('scrapbookPdfBtn');
@@ -3215,7 +3327,7 @@ async function generateScrapbookPdf(){
   btn.disabled = true;
 
   const { PDFDocument, StandardFonts, degrees } = PDFLib;
-  const SB = { ink:'#1C2B3A', paper:'#F6F1E4', paperPage:'#F3EAD9', tealDark:'#2A4F52', gold:'#C9A227', inkSoft:'#4A5A68', teal:'#3C6E71', rust:'#A34A3A' };
+  const SB = { ink:'#1C2B3A', paper:'#F6F1E4', paperPage:'#F3EAD9', paperAlt:'#EFE7D2', tealDark:'#2A4F52', gold:'#C9A227', inkSoft:'#4A5A68', teal:'#3C6E71', rust:'#A34A3A' };
   const rgbc = (hex) => hexToRgb01(hex, PDFLib);
   const HALF_W = 432, PAGE_H = 648; // 6x9in per page, a common book trim size — spread is 12x9in
   const SPREAD_W = HALF_W*2;
@@ -3423,6 +3535,49 @@ async function generateScrapbookPdf(){
       }
     }
 
+    // ---------- FULL DASHBOARD: 6 mini charts + calendar strip (both halves as one canvas) ----------
+    btn.textContent = '⏳ Building your full dashboard…';
+    p = pdf.addPage([SPREAD_W, PAGE_H]);
+    fillHalf(p, 0, SB.paper); fillHalf(p, HALF_W, SB.paper);
+    safeDrawText(p, 'The Full Dashboard', { x:30, y:PAGE_H-35, size:16, font:fontSerif, color:rgbc(SB.ink) });
+
+    const dd = computeDashboardData(sorted);
+    const dTileW = (SPREAD_W-60-2*16)/3, dTileH = 190, dGapY = 20, dGridX0 = 30, dGridY0 = PAGE_H-70;
+    async function placeDashTile(col, row, title, svgBuilder){
+      const x = dGridX0 + col*(dTileW+16), yTop = dGridY0 - row*(dTileH+dGapY+16);
+      safeDrawText(p, title, { x, y:yTop, size:9, font:fontB, color:rgbc(SB.inkSoft) });
+      try{
+        const svg = svgBuilder();
+        const img = await embedRasterSvg(svg, dTileW, dTileH);
+        p.drawImage(img, { x, y:yTop-dTileH-6, width:dTileW, height:dTileH });
+      }catch(e){ /* skip this one tile rather than fail the whole dashboard */ }
+    }
+
+    await placeDashTile(0, 0, 'Distance over time', () =>
+      miniLineChartSvg(360, 190, dd.years, dd.distanceOverTime, SB.gold, SB.ink));
+    await placeDashTile(1, 0, 'Average trip length over time', () =>
+      miniLineChartSvg(360, 190, dd.years, dd.avgLengthOverTime, SB.teal, SB.ink));
+    await placeDashTile(2, 0, 'Trips by month', () =>
+      pdfBarChartSvg(360, 190, dd.monthNames, dd.monthCounts, SB.rust, SB.ink, false));
+    await placeDashTile(0, 1, 'How you travel', () => {
+      const entries = Object.entries(dd.modeCounts).filter(([,c])=>c>0);
+      return pdfPieChartSvg(360, 190, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink);
+    });
+    await placeDashTile(1, 1, 'Trip length', () =>
+      pdfBarChartSvg(360, 190, dd.lengthBuckets.map(b=>b[0]), dd.lengthBuckets.map(b=>b[1]), SB.tealDark, SB.ink, false));
+    await placeDashTile(2, 1, 'By continent', () => {
+      const entries = Object.entries(dd.continentCounts).sort((a,b)=>b[1]-a[1]);
+      return pdfPieChartSvg(360, 190, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.ink);
+    });
+
+    const calY = dGridY0 - 2*(dTileH+dGapY+16);
+    safeDrawText(p, `Days travelled calendar — ${dd.calendarYear}`, { x:30, y:calY, size:9, font:fontB, color:rgbc(SB.inkSoft) });
+    try{
+      const calSvg = miniCalendarHeatmapSvg(SPREAD_W-60, 100, dd.calendarYear, dd.travelDaySet, SB.teal, SB.paperAlt);
+      const calImg = await embedRasterSvg(calSvg, SPREAD_W-60, 100);
+      p.drawImage(calImg, { x:30, y:calY-106, width:SPREAD_W-60, height:100 });
+    }catch(e){ /* decorative — continue without it */ }
+
     // ---------- STAMPS COLLECTED SPREAD (both halves as one page) ----------
     btn.textContent = '⏳ Building your stamp page…';
     p = pdf.addPage([SPREAD_W, PAGE_H]);
@@ -3449,6 +3604,29 @@ async function generateScrapbookPdf(){
         const stampImg = await embedRasterSvg(buildStampSvg(t, 200, true), stampSize, stampSize);
         p.drawImage(stampImg, { x: cxPos-stampSize/2, y: cyPos-stampSize/2, width: stampSize, height: stampSize });
       }catch(e){ /* skip this one stamp rather than fail the whole page */ }
+    }
+
+    // ---------- COUNTRY CHECKLIST, ONE SPREAD PER CONTINENT ----------
+    const checklistCounts = countryVisitCounts();
+    let checklistI = 0;
+    for(const [continent, list] of Object.entries(COUNTRY_LIST)){
+      checklistI++;
+      btn.textContent = `⏳ Building country checklist (${checklistI}/${Object.keys(COUNTRY_LIST).length})…`;
+      p = pdf.addPage([SPREAD_W, PAGE_H]);
+      fillHalf(p, 0, SB.paper); fillHalf(p, HALF_W, SB.paper);
+      const visitedCount = list.filter(([code])=>checklistCounts[code]>0).length;
+      safeDrawText(p, `Country Checklist - ${continent}`, { x:30, y:PAGE_H-40, size:18, font:fontSerif, color:rgbc(SB.ink) });
+      safeDrawText(p, `${visitedCount} / ${list.length} visited`, { x:30, y:PAGE_H-62, size:10, font:fontR, color:rgbc(SB.tealDark) });
+
+      const cols = 4, colW = (SPREAD_W-60)/cols, rowH = 17;
+      list.forEach(([code,name], i)=>{
+        const col = i % cols, row = Math.floor(i/cols);
+        const x = 30 + col*colW, y = PAGE_H-95 - row*rowH;
+        const visited = checklistCounts[code] > 0;
+        const label = visited ? `${name}  (x${checklistCounts[code]})` : name;
+        const font = visited ? fontB : fontR;
+        safeDrawText(p, truncateToWidth(font, sanitizeForPdfFont(label), 8.5, colW-10), { x, y, size:8.5, font, color: rgbc(visited?SB.tealDark:'#B0A48A') });
+      });
     }
 
     // ---------- END SPREAD ----------
@@ -3904,6 +4082,61 @@ function groupContext(t, sorted){
   if(siblings.length < 2) return null;
   const idx = siblings.findIndex(x => x.id === t.id);
   return { groupName: t.groupName, index: idx+1, total: siblings.length };
+}
+// Every dataset behind the "full dashboard" page, computed once and shared
+// by both the PPTX and PDF exports.
+function computeDashboardData(sorted){
+  const years = [...new Set(sorted.map(t=>t.startDate.slice(0,4)))].sort();
+
+  let cumulative = 0;
+  const distanceOverTime = years.map(y=>{
+    sorted.filter(t=>t.startDate.slice(0,4)===y).forEach(t=>{
+      const d = tripDistances(t);
+      if(d.fromHomeKm !== null) cumulative += d.fromHomeKm;
+    });
+    return Math.round(settings.unit === 'metric' ? cumulative : cumulative*0.621371);
+  });
+
+  const avgLengthOverTime = years.map(y=>{
+    const yearTrips = sorted.filter(t=>t.startDate.slice(0,4)===y);
+    const totalDays = yearTrips.reduce((s,t)=>s+dayCount(t.startDate,t.endDate), 0);
+    return yearTrips.length ? Math.round((totalDays/yearTrips.length)*10)/10 : 0;
+  });
+
+  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthCounts = new Array(12).fill(0);
+  sorted.forEach(t=>{ monthCounts[parseInt(t.startDate.slice(5,7),10)-1]++; });
+
+  const calendarYear = years.length ? parseInt(years[years.length-1],10) : new Date().getFullYear();
+  const travelDaySet = new Set();
+  sorted.forEach(t=>{
+    let d = new Date(t.startDate+'T00:00:00');
+    const end = new Date(t.endDate+'T00:00:00');
+    while(d <= end){
+      if(d.getFullYear() === calendarYear) travelDaySet.add(d.toISOString().slice(0,10));
+      d.setDate(d.getDate()+1);
+    }
+  });
+
+  const modeCounts = {
+    Flight: sorted.filter(t=>t.isFlight).length, Cruise: sorted.filter(t=>t.isCruise).length,
+    Drive: sorted.filter(t=>t.isDrive).length, Train: sorted.filter(t=>t.isTrain).length, Boat: sorted.filter(t=>t.isBoat).length
+  };
+
+  const lengthBuckets = [['1 day',0],['2-3',0],['4-7',0],['8-14',0],['15+',0]];
+  sorted.forEach(t=>{
+    const d = dayCount(t.startDate, t.endDate);
+    if(d===1) lengthBuckets[0][1]++;
+    else if(d<=3) lengthBuckets[1][1]++;
+    else if(d<=7) lengthBuckets[2][1]++;
+    else if(d<=14) lengthBuckets[3][1]++;
+    else lengthBuckets[4][1]++;
+  });
+
+  const continentCounts = {};
+  sorted.forEach(t=>{ const c = effectiveContinent(t); if(c) continentCounts[c] = (continentCounts[c]||0)+1; });
+
+  return { years, distanceOverTime, avgLengthOverTime, monthNames, monthCounts, calendarYear, travelDaySet, modeCounts, lengthBuckets, continentCounts };
 }
 function hashString(str){
   let h = 0;
