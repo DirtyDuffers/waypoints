@@ -1212,6 +1212,9 @@
     <div class="panel">
       <h3 style="font-size:.95rem;">💾 Backup &amp; transfer</h3>
       <p style="font-size:.85rem; color:var(--ink-soft); margin-top:0;">Everything is stored only in this browser. Export a backup file to move your log to another device, or as a safety copy.</p>
+      <div id="storageUsageBar" style="margin-bottom:12px;"></div>
+      <button class="btn btn-ghost" id="recompressPhotosBtn" type="button" style="margin-bottom:12px;">🗜️ Recompress all trip photos</button>
+      <br>
       <button class="btn btn-teal" id="exportBtn" type="button">⬇️ Export backup</button>
       <button class="btn btn-ghost" id="exportCsvBtn" type="button">📊 Export as CSV</button>
       <button class="btn btn-ghost" id="printLogBtn" type="button">🖨️ Print my log</button>
@@ -1268,7 +1271,17 @@ function loadTrips(){
   }catch(e){ return []; }
 }
 function saveTrips(trips){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(trips));
+    return true;
+  }catch(e){
+    if(e.name === 'QuotaExceededError' || e.code === 22 || e.code === 1014){
+      alert("Couldn't save — your browser's local storage is full.\n\nThis is almost always caused by trip photos, since each one takes up space and there's a hard limit (usually around 5MB) per site. Nothing has been lost, but this change wasn't saved.\n\nTo fix it: edit an older trip and remove its photo (or a few), then try again. You can also export a backup first (Settings → Export backup) just in case.");
+    }else{
+      alert("Something went wrong saving your data: " + e.message);
+    }
+    return false;
+  }
 }
 
 /* Older saved trips had a single free-text "companions" string, no flight/cruise
@@ -1839,26 +1852,40 @@ function showPhotoPreview(dataUrl){
     wrap.style.display = 'none';
   }
 }
+const PHOTO_TARGET_SIZE = 360;
+const PHOTO_QUALITY = 0.55;
+
+// Crops to a centered square (so it fits the Polaroid frame cleanly) and
+// compresses to a small JPEG. Shared by new uploads and bulk recompression
+// of previously-stored photos, so both always use the same current settings.
+function compressImageSrcToDataUrl(imgSrc){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+      const canvas = document.createElement('canvas');
+      canvas.width = PHOTO_TARGET_SIZE; canvas.height = PHOTO_TARGET_SIZE;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, PHOTO_TARGET_SIZE, PHOTO_TARGET_SIZE);
+      resolve(canvas.toDataURL('image/jpeg', PHOTO_QUALITY));
+    };
+    img.onerror = () => reject(new Error('Could not load this image'));
+    img.src = imgSrc;
+  });
+}
+
 document.getElementById('fPhotoInput').addEventListener('change', (e)=>{
   const file = e.target.files[0];
   if(!file) return;
   const reader = new FileReader();
-  reader.onload = (ev)=>{
-    const img = new Image();
-    img.onload = ()=>{
-      // Crop to a centered square so it fits a Polaroid frame cleanly,
-      // then compress to keep localStorage usage small.
-      const side = Math.min(img.width, img.height);
-      const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
-      const targetSize = 500;
-      const canvas = document.createElement('canvas');
-      canvas.width = targetSize; canvas.height = targetSize;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, sx, sy, side, side, 0, 0, targetSize, targetSize);
-      pendingPhotoDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  reader.onload = async (ev)=>{
+    try{
+      pendingPhotoDataUrl = await compressImageSrcToDataUrl(ev.target.result);
       showPhotoPreview(pendingPhotoDataUrl);
-    };
-    img.src = ev.target.result;
+    }catch(e){
+      alert("Couldn't process that image — please try a different photo.");
+    }
   };
   reader.readAsDataURL(file);
 });
@@ -2303,23 +2330,50 @@ document.getElementById('saveTrip').addEventListener('click', ()=>{
     } : null
   };
 
-  if(editingId){
-    trips = trips.map(t => t.id === editingId ? tripData : t);
-  }else{
-    trips.push(tripData);
+  const candidateTrips = editingId
+    ? trips.map(t => t.id === editingId ? tripData : t)
+    : [...trips, tripData];
+
+  if(saveTrips(candidateTrips)){
+    trips = candidateTrips;
+    editingId = null;
+    form.style.display = 'none';
+    renderTrips();
   }
-  saveTrips(trips);
-  editingId = null;
-  form.style.display = 'none';
-  renderTrips();
+  // If saveTrips failed (e.g. storage full), it already alerted the person —
+  // leave the form open and untouched so nothing they've entered is lost.
 });
 
 /* ---------------------------------------------------------------
    SETTINGS VIEW
 --------------------------------------------------------------- */
 let homePicker = null;
+function renderStorageUsage(){
+  let totalChars = 0;
+  for(let i=0; i<localStorage.length; i++){
+    const key = localStorage.key(i);
+    totalChars += key.length + (localStorage.getItem(key) || '').length;
+  }
+  const usedKB = Math.round(totalChars / 1024);
+  const assumedLimitKB = 5000; // typical browser localStorage cap; varies, but a reasonable estimate
+  const pct = Math.min(100, Math.round((usedKB / assumedLimitKB) * 100));
+  const photoCount = trips.filter(t => t.photo).length;
+  const barColor = pct >= 85 ? 'var(--rust)' : (pct >= 60 ? 'var(--gold-dark)' : 'var(--teal)');
+  document.getElementById('storageUsageBar').innerHTML = `
+    <div style="font-size:.8rem; color:var(--ink-soft); margin-bottom:4px;">
+      Storage used: ~${usedKB.toLocaleString()} KB of a typical ~${assumedLimitKB.toLocaleString()} KB browser limit
+      ${photoCount ? ` · ${photoCount} trip photo${photoCount!==1?'s':''}` : ''}
+    </div>
+    <div style="background:var(--paper-alt); border-radius:4px; height:8px; overflow:hidden;">
+      <div style="width:${pct}%; height:100%; background:${barColor};"></div>
+    </div>
+    ${pct >= 70 ? `<div style="font-size:.78rem; color:var(--rust); margin-top:4px;">Getting full — mostly from trip photos. Consider removing a few from older trips if saving starts failing.</div>` : ''}
+  `;
+}
+
 function renderSettingsView(){
   applyTheme();
+  renderStorageUsage();
   if(!homePicker){
     homePicker = createLocationPicker(document.getElementById('lpHome'), 'Search for your home city', settings.home);
   }else{
