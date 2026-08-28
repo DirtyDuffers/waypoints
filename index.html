@@ -2852,27 +2852,24 @@ async function generateScrapbookPptx(){
   const totalDays = sorted.filter(t=>!isUpcoming(t)).reduce((s,t)=>s+dayCount(t.startDate,t.endDate), 0);
 
   function addTripDetailsRows(s, t, x, y, w){
-    const dist = tripDistances(t);
-    const rows = [];
-    const names = companionNames(t);
-    if(names.length) rows.push(['Travelled with', names.join(', ')]);
-    const badgeList = [t.isFlight&&'Flight', t.isCruise&&'Cruise', t.isDrive&&'Drive', t.isTrain&&'Train', t.isBoat&&'Boat'].filter(Boolean).join(', ');
-    if(badgeList) rows.push(['Travelled by', badgeList]);
-    if(dist.fromHomeKm !== null) rows.push([t.customBase ? `Distance from ${t.customBase.name}` : 'Distance from home', formatDistance(dist.fromHomeKm)]);
-    if(t.hotel) rows.push(['Stayed at', t.hotel]);
-    const cost = effectiveCost(t);
-    if(cost !== null && cost !== undefined) rows.push(['Cost', settings.currencySymbol + cost.toLocaleString()]);
-    if(t.tags && t.tags.length) rows.push(['Tags', t.tags.join(', ')]);
+    const rows = buildTripDetailRows(t, '→');
+    // A cruise itinerary or a full cost breakdown can add several extra
+    // rows — shrink row height/font a little once there are more than fit
+    // comfortably at the normal size, rather than letting them run off the
+    // bottom of the slide.
+    const compact = rows.length > 9;
+    const rowH = compact ? 0.32 : 0.42;
+    const fontSize = compact ? 10.5 : 12;
     let ry = y;
     rows.forEach(([label,val])=>{
-      s.addText(label, { x, y:ry, w:2.3, h:0.32, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
-      s.addText(String(val), { x:x+2.3, y:ry, w:w-2.3, h:0.32, fontFace:'Calibri', fontSize:12, bold:true, color:SB.ink, isTextBox:true, margin:0 });
-      ry += 0.42;
+      s.addText(label, { x, y:ry, w:2.3, h:rowH-0.06, fontFace:'Calibri', fontSize, color:SB.inkSoft, isTextBox:true, margin:0 });
+      s.addText(String(val), { x:x+2.3, y:ry, w:w-2.3, h:rowH-0.06, fontFace:'Calibri', fontSize, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+      ry += rowH;
     });
     if(t.notes){
-      ry += 0.25;
+      ry += 0.2;
       s.addText(`"${t.notes}"`, {
-        x, y:ry, w, h:Math.max(0.5, PAGE_H-0.5-ry), fontFace:'Georgia', italic:true, fontSize:13, color:SB.ink,
+        x, y:ry, w, h:Math.max(0.5, PAGE_H-0.5-ry), fontFace:'Georgia', italic:true, fontSize:12, color:SB.ink,
         isTextBox:true, margin:0, valign:'top'
       });
     }
@@ -2917,6 +2914,13 @@ async function generateScrapbookPptx(){
       s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.95, w:titleW, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
       s.addText(dateLine, { x:0.5, y:1.4, w:titleW, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
 
+      const grp = groupContext(t, sorted);
+      if(grp){
+        s.addText(`Part of "${grp.groupName}"  ·  stop ${grp.index} of ${grp.total}`, {
+          x:0.5, y:1.72, w:titleW, h:0.3, fontFace:'Calibri', fontSize:10, italic:true, color:SB.gold, isTextBox:true, margin:0
+        });
+      }
+
       if(upcoming){
         s.addShape(pptx.ShapeType.roundRect, { x:8.3, y:0.4, w:1.9, h:0.55, rectRadius:0.28, fill:{color:SB.gold}, line:{type:'none'} });
         s.addText('UPCOMING', { x:8.3, y:0.4, w:1.9, h:0.55, fontFace:'Calibri', fontSize:11, bold:true, color:SB.ink, align:'center', valign:'middle', isTextBox:true, margin:0 });
@@ -2926,15 +2930,16 @@ async function generateScrapbookPptx(){
 
       // Every trip gets a photo slot — a real photo if there is one, or an
       // empty placeholder waiting to be filled in, like a real scrapbook page.
-      s.addShape(pptx.ShapeType.rect, { x:0.5, y:1.9, w:4.6, h:5.0, fill:{color:'FFFFFF'}, line:{type:'none'},
+      const contentY = grp ? 2.15 : 1.9;
+      s.addShape(pptx.ShapeType.rect, { x:0.5, y:contentY, w:4.6, h:5.0-(contentY-1.9), fill:{color:'FFFFFF'}, line:{type:'none'},
         shadow:{ type:'outer', color:'000000', opacity:0.3, blur:6, offset:3, angle:90 } });
       if(hasPhoto){
-        s.addImage({ data: t.photo, x:0.7, y:2.1, w:4.2, h:4.2 });
+        s.addImage({ data: t.photo, x:0.7, y:contentY+0.2, w:4.2, h:4.2-(contentY-1.9) });
       }else{
-        s.addShape(pptx.ShapeType.rect, { x:0.7, y:2.1, w:4.2, h:4.2, fill:{color:'F3EAD9'}, line:{color:'C9A227', width:1.5, dashType:'dash'} });
-        s.addText('PHOTO GOES\nHERE', { x:0.7, y:3.7, w:4.2, h:1.0, fontFace:'Calibri', fontSize:15, italic:true, color:'B0A48A', align:'center', isTextBox:true, margin:0 });
+        s.addShape(pptx.ShapeType.rect, { x:0.7, y:contentY+0.2, w:4.2, h:4.2-(contentY-1.9), fill:{color:'F3EAD9'}, line:{color:'C9A227', width:1.5, dashType:'dash'} });
+        s.addText('PHOTO GOES\nHERE', { x:0.7, y:contentY+1.8, w:4.2, h:1.0, fontFace:'Calibri', fontSize:15, italic:true, color:'B0A48A', align:'center', isTextBox:true, margin:0 });
       }
-      addTripDetailsRows(s, t, 5.5, 2.1, 7.3);
+      addTripDetailsRows(s, t, 5.5, contentY, 7.3);
     }
 
     // ---------- STATS SLIDE 1: overview + trips per year ----------
@@ -3299,6 +3304,14 @@ async function generateScrapbookPdf(){
       safeDrawText(p, truncateToWidth(fontR, sanitizeForPdfFont(t.country || effectiveContinent(t) || ''), 10, titleMaxWidth), { x:rx, y:PAGE_H-82, size:10, font:fontR, color:rgbc(SB.tealDark) });
       const days = dayCount(t.startDate, t.endDate);
       safeDrawText(p, `${t.startDate} to ${t.endDate}   -   ${days} day${days!==1?'s':''}`, { x:rx, y:PAGE_H-100, size:9, font:fontR, color:rgbc(SB.inkSoft), maxWidth:titleMaxWidth });
+
+      const grp = groupContext(t, sorted);
+      let detailsStartY = PAGE_H-135;
+      if(grp){
+        safeDrawText(p, `Part of "${grp.groupName}"  -  stop ${grp.index} of ${grp.total}`, { x:rx, y:PAGE_H-118, size:9, font:fontItalic, color:rgbc(SB.gold), maxWidth:titleMaxWidth });
+        detailsStartY = PAGE_H-150;
+      }
+
       if(!upcoming){
         // You don't get the stamp until you've actually taken the trip
         try{
@@ -3307,23 +3320,19 @@ async function generateScrapbookPdf(){
         }catch(e){ /* decorative — continue without it */ }
       }
 
-      const dist = tripDistances(t);
-      const rows = [];
-      const names = companionNames(t);
-      if(names.length) rows.push(['Travelled with', names.join(', ')]);
-      const badgeList = [t.isFlight&&'Flight', t.isCruise&&'Cruise', t.isDrive&&'Drive', t.isTrain&&'Train', t.isBoat&&'Boat'].filter(Boolean).join(', ');
-      if(badgeList) rows.push(['Travelled by', badgeList]);
-      if(dist.fromHomeKm !== null) rows.push([t.customBase ? `Distance from ${t.customBase.name}` : 'Distance from home', formatDistance(dist.fromHomeKm)]);
-      if(t.hotel) rows.push(['Stayed at', t.hotel]);
-      const cost = effectiveCost(t);
-      if(cost !== null && cost !== undefined) rows.push(['Cost', settings.currencySymbol + cost.toLocaleString()]);
-      if(t.tags && t.tags.length) rows.push(['Tags', t.tags.join(', ')]);
+      const rows = buildTripDetailRows(t, '-');
+      // A cruise itinerary or full cost breakdown can add several extra
+      // rows — shrink a little once there are more than fit comfortably at
+      // the normal size, rather than running off the bottom of the page.
+      const compact = rows.length > 10;
+      const rowGap = compact ? 15 : 20;
+      const rowFontSize = compact ? 8 : 9;
 
-      let ry = PAGE_H-135;
+      let ry = detailsStartY;
       rows.forEach(([label,val])=>{
-        safeDrawText(p, label, { x:rx, y:ry, size:9, font:fontR, color:rgbc(SB.inkSoft) });
-        safeDrawText(p, String(val), { x:rx+130, y:ry, size:9, font:fontB, color:rgbc(SB.ink), maxWidth: HALF_W-210 });
-        ry -= 20;
+        safeDrawText(p, label, { x:rx, y:ry, size:rowFontSize, font:fontR, color:rgbc(SB.inkSoft) });
+        safeDrawText(p, String(val), { x:rx+130, y:ry, size:rowFontSize, font:fontB, color:rgbc(SB.ink), maxWidth: HALF_W-210 });
+        ry -= rowGap;
       });
       if(t.notes){
         ry -= 12;
@@ -3843,6 +3852,59 @@ document.addEventListener('click', e=>{
 const STAMP_INK_COLORS = ['#a34a3a', '#1c2b3a', '#2a4f52', '#6b5b95', '#7a4a00', '#3c6e71'];
 const STAMP_SHAPES = ['circle', 'oval', 'double-circle', 'hex', 'rect'];
 
+// Shared by both the PPTX and PDF scrapbook exports, so every field stored
+// on a trip is represented consistently in both formats. `arrowChar` differs
+// because PDF's standard fonts can't render "→" (see sanitizeForPdfFont).
+function buildTripDetailRows(t, arrowChar){
+  const rows = [];
+  const dist = tripDistances(t);
+  const names = companionNames(t);
+  if(names.length) rows.push(['Travelled with', names.join(', ')]);
+
+  const badgeList = [t.isFlight&&'Flight', t.isCruise&&'Cruise', t.isDrive&&'Drive', t.isTrain&&'Train', t.isBoat&&'Boat'].filter(Boolean).join(', ');
+  if(badgeList) rows.push(['Travelled by', badgeList]);
+
+  if(t.isCruise && t.cruise){
+    const shipBits = [t.cruise.cruiseLine, t.cruise.shipName].filter(Boolean).join(' – ');
+    if(shipBits) rows.push(['Ship', shipBits]);
+    const routePorts = [t.cruise.startPort, ...(t.cruise.ports||[]), t.cruise.endPort].filter(Boolean);
+    if(routePorts.length) rows.push(['Ports of call', routePorts.map(p=>p.name).join(` ${arrowChar} `)]);
+    if(dist.cruiseKm > 0) rows.push(['Cruise distance', Math.round(kmToNm(dist.cruiseKm)).toLocaleString() + ' nm']);
+    const airportBits = [];
+    if(t.cruise.departureAirport) airportBits.push(`Out via ${t.cruise.departureAirport.name}`);
+    if(t.cruise.arrivalAirport) airportBits.push(`Back via ${t.cruise.arrivalAirport.name}`);
+    if(airportBits.length) rows.push(['Flights', airportBits.join(', ')]);
+  }
+
+  if(dist.fromHomeKm !== null) rows.push([t.customBase ? `Distance from ${t.customBase.name}` : 'Distance from home', formatDistance(dist.fromHomeKm)]);
+  if(t.hotel) rows.push(['Stayed at', t.hotel]);
+
+  const cost = effectiveCost(t);
+  if(cost !== null && cost !== undefined) rows.push(['Cost', settings.currencySymbol + cost.toLocaleString()]);
+  if(t.costBreakdown){
+    const catLabels = { flights:'Flights', accommodation:'Accommodation', food:'Food', activities:'Activities', other:'Other' };
+    const parts = Object.entries(t.costBreakdown)
+      .filter(([,v]) => typeof v === 'number')
+      .map(([k,v]) => `${catLabels[k]}: ${settings.currencySymbol}${v.toLocaleString()}`);
+    if(parts.length > 1) rows.push(['Cost breakdown', parts.join(' · ')]);
+  }
+
+  if(t.tags && t.tags.length) rows.push(['Tags', t.tags.join(', ')]);
+  if(t.packing && t.packing.length) rows.push(['Packing list', t.packing.map(p=>p.text).join(', ')]);
+
+  return rows;
+}
+// A trip's group siblings, sorted chronologically, plus this trip's position
+// within that group — used to label multi-leg trips clearly even though
+// each leg still gets its own page/spread (see the app's response to the
+// person about why they're kept separate).
+function groupContext(t, sorted){
+  if(!t.groupName) return null;
+  const siblings = sorted.filter(x => x.groupName === t.groupName);
+  if(siblings.length < 2) return null;
+  const idx = siblings.findIndex(x => x.id === t.id);
+  return { groupName: t.groupName, index: idx+1, total: siblings.length };
+}
 function hashString(str){
   let h = 0;
   for(let i=0; i<str.length; i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
