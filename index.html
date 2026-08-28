@@ -2904,7 +2904,6 @@ async function generateScrapbookPptx(){
 
       const hasPhoto = !!t.photo;
       const upcoming = isUpcoming(t);
-      const showImageArea = hasPhoto || upcoming; // upcoming trips always get an image slot — a real photo, or a "goes here" placeholder waiting to be filled in
       const days = dayCount(t.startDate, t.endDate);
       const dateLine = `${t.startDate}  →  ${t.endDate}   ·   ${days} day${days!==1?'s':''}`;
       let stampPng = null;
@@ -2925,20 +2924,17 @@ async function generateScrapbookPptx(){
 
       if(stampPng) s.addImage({ data: stampPng, x:10.9, y:0.4, w:1.8, h:1.8 });
 
-      if(showImageArea){
-        s.addShape(pptx.ShapeType.rect, { x:0.5, y:1.9, w:4.6, h:5.0, fill:{color:'FFFFFF'}, line:{type:'none'},
-          shadow:{ type:'outer', color:'000000', opacity:0.3, blur:6, offset:3, angle:90 } });
-        if(hasPhoto){
-          s.addImage({ data: t.photo, x:0.7, y:2.1, w:4.2, h:4.2 });
-        }else{
-          // Upcoming trip with no photo yet — an empty placeholder slot, like a scrapbook page waiting to be filled in
-          s.addShape(pptx.ShapeType.rect, { x:0.7, y:2.1, w:4.2, h:4.2, fill:{color:'F3EAD9'}, line:{color:'C9A227', width:1.5, dashType:'dash'} });
-          s.addText('PHOTO GOES\nHERE', { x:0.7, y:3.7, w:4.2, h:1.0, fontFace:'Calibri', fontSize:15, italic:true, color:'B0A48A', align:'center', isTextBox:true, margin:0 });
-        }
-        addTripDetailsRows(s, t, 5.5, 2.1, 7.3);
+      // Every trip gets a photo slot — a real photo if there is one, or an
+      // empty placeholder waiting to be filled in, like a real scrapbook page.
+      s.addShape(pptx.ShapeType.rect, { x:0.5, y:1.9, w:4.6, h:5.0, fill:{color:'FFFFFF'}, line:{type:'none'},
+        shadow:{ type:'outer', color:'000000', opacity:0.3, blur:6, offset:3, angle:90 } });
+      if(hasPhoto){
+        s.addImage({ data: t.photo, x:0.7, y:2.1, w:4.2, h:4.2 });
       }else{
-        addTripDetailsRows(s, t, 0.5, 2.1, 9.5);
+        s.addShape(pptx.ShapeType.rect, { x:0.7, y:2.1, w:4.2, h:4.2, fill:{color:'F3EAD9'}, line:{color:'C9A227', width:1.5, dashType:'dash'} });
+        s.addText('PHOTO GOES\nHERE', { x:0.7, y:3.7, w:4.2, h:1.0, fontFace:'Calibri', fontSize:15, italic:true, color:'B0A48A', align:'center', isTextBox:true, margin:0 });
       }
+      addTripDetailsRows(s, t, 5.5, 2.1, 7.3);
     }
 
     // ---------- STATS SLIDE 1: overview + trips per year ----------
@@ -3112,8 +3108,29 @@ document.getElementById('scrapbookBtn').addEventListener('click', generateScrapb
    app, date ranges here use "to" instead of the → arrow.
 --------------------------------------------------------------- */
 function hexToRgb01(hex, PDFLib){
-  const n = parseInt(hex.replace('#',''), 16);
-  return PDFLib.rgb(((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255);
+  return PDFLib.rgb(...[0,2,4].map(i => parseInt(hex.slice(i+1,i+3),16)/255));
+}
+
+// Standard PDF fonts only support WinAnsi/CP1252 — a narrow character set
+// covering ASCII plus common Western European accents and a handful of
+// special punctuation marks (curly quotes, em/en dash, bullet, etc). Trip
+// data comes from free-text fields the person typed themselves (notes,
+// tags, hotel names, place names...), so it can contain absolutely
+// anything — emoji, CJK characters, other scripts — any of which would
+// otherwise crash PDF generation outright. This strips anything the font
+// can't render instead, so one unusual character never breaks the whole
+// export.
+const PDF_SAFE_CHARS = /[^\x00-\xFF\u2018\u2019\u201A\u201C\u201D\u201E\u2013\u2014\u2020\u2021\u2022\u2026\u2030\u2039\u203A\u20AC\u0152\u0153\u0160\u0161\u0178\u017D\u017E\u0192]/g;
+function sanitizeForPdfFont(str){
+  return String(str).replace(PDF_SAFE_CHARS, '');
+}
+function safeDrawText(page, text, opts){
+  const safe = sanitizeForPdfFont(text);
+  try{
+    page.drawText(safe, opts);
+  }catch(e){
+    try{ page.drawText(safe.replace(/[^\x00-\x7F]/g, ''), opts); }catch(e2){ /* give up on just this one string rather than fail the whole document */ }
+  }
 }
 function pdfBarChartSvg(w, h, labels, values, color, textColor, rotateLabels){
   const max = Math.max(...values, 1);
@@ -3195,7 +3212,7 @@ async function generateScrapbookPdf(){
       page.drawLine({ start:{x:HALF_W,y:0}, end:{x:HALF_W,y:PAGE_H}, thickness:1, color: rgbc('#000000'), opacity:0.15 });
     }
     function wrapAndDraw(page, text, x, y, opts){
-      page.drawText(text, { x, y, size:opts.size, font:opts.font, color: rgbc(opts.color), maxWidth: opts.maxWidth, lineHeight: opts.lineHeight || opts.size*1.35 });
+      safeDrawText(page, text, { x, y, size:opts.size, font:opts.font, color: rgbc(opts.color), maxWidth: opts.maxWidth, lineHeight: opts.lineHeight || opts.size*1.35 });
     }
 
     const sorted = [...trips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
@@ -3207,9 +3224,9 @@ async function generateScrapbookPdf(){
     // ---------- TITLE SPREAD ----------
     let p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.ink); fillHalf(p, HALF_W, SB.ink); spine(p);
-    p.drawText('WAYPOINTS', { x:HALF_W+40, y:PAGE_H-260, size:34, font:fontSerif, color:rgbc(SB.paper) });
-    p.drawText('A Travel Scrapbook', { x:HALF_W+40, y:PAGE_H-290, size:14, font:fontItalic, color:rgbc(SB.gold) });
-    p.drawText(`${sorted.length} trips  -  ${countries.size} countries  -  ${continents.size} continents`, { x:HALF_W+40, y:PAGE_H-320, size:10, font:fontR, color:rgbc(SB.paper) });
+    safeDrawText(p, 'WAYPOINTS', { x:HALF_W+40, y:PAGE_H-260, size:34, font:fontSerif, color:rgbc(SB.paper) });
+    safeDrawText(p, 'A Travel Scrapbook', { x:HALF_W+40, y:PAGE_H-290, size:14, font:fontItalic, color:rgbc(SB.gold) });
+    safeDrawText(p, `${sorted.length} trips  -  ${countries.size} countries  -  ${continents.size} continents`, { x:HALF_W+40, y:PAGE_H-320, size:10, font:fontR, color:rgbc(SB.paper) });
 
     // ---------- ONE SPREAD PER TRIP ----------
     for(let i=0; i<sorted.length; i++){
@@ -3220,21 +3237,19 @@ async function generateScrapbookPdf(){
 
       const hasPhoto = !!t.photo;
       const upcoming = isUpcoming(t);
-      const showImageArea = hasPhoto || upcoming;
 
-      // LEFT page: photo / placeholder, and a stamp (only for trips already taken)
-      if(showImageArea){
-        const size = HALF_W - 100;
-        if(hasPhoto){
-          try{
-            const img = await embedJpegDataUrl(t.photo);
-            p.drawRectangle({ x:42, y:PAGE_H-size-58, width:size+16, height:size+16, color:rgbc('#FFFFFF') });
-            p.drawImage(img, { x:50, y:PAGE_H-size-50, width:size, height:size });
-          }catch(e){ /* if the photo can't be embedded, continue without it */ }
-        }else{
-          p.drawRectangle({ x:50, y:PAGE_H/2-90, width:HALF_W-100, height:180, borderColor:rgbc(SB.gold), borderWidth:1.5, borderDashArray:[5,4] });
-          p.drawText('PHOTO GOES HERE', { x:HALF_W/2-72, y:PAGE_H/2, size:11, font:fontItalic, color:rgbc('#B0A48A') });
-        }
+      // LEFT page: photo (or placeholder, for any trip missing one — past or
+      // future), and a stamp (only for trips already taken)
+      const size = HALF_W - 100;
+      if(hasPhoto){
+        try{
+          const img = await embedJpegDataUrl(t.photo);
+          p.drawRectangle({ x:42, y:PAGE_H-size-58, width:size+16, height:size+16, color:rgbc('#FFFFFF') });
+          p.drawImage(img, { x:50, y:PAGE_H-size-50, width:size, height:size });
+        }catch(e){ /* if the photo can't be embedded, continue without it */ }
+      }else{
+        p.drawRectangle({ x:50, y:PAGE_H/2-90, width:HALF_W-100, height:180, borderColor:rgbc(SB.gold), borderWidth:1.5, borderDashArray:[5,4] });
+        safeDrawText(p, 'PHOTO GOES HERE', { x:HALF_W/2-72, y:PAGE_H/2, size:11, font:fontItalic, color:rgbc('#B0A48A') });
       }
       if(!upcoming){
         // You don't get the stamp until you've actually taken the trip
@@ -3245,15 +3260,15 @@ async function generateScrapbookPdf(){
       }
       if(upcoming){
         p.drawRectangle({ x:HALF_W-140, y:PAGE_H-52, width:100, height:26, color:rgbc(SB.gold) });
-        p.drawText('UPCOMING', { x:HALF_W-130, y:PAGE_H-44, size:9, font:fontB, color:rgbc(SB.ink) });
+        safeDrawText(p, 'UPCOMING', { x:HALF_W-130, y:PAGE_H-44, size:9, font:fontB, color:rgbc(SB.ink) });
       }
 
       // RIGHT page: details
       const rx = HALF_W + 40;
-      p.drawText(t.place, { x:rx, y:PAGE_H-60, size:20, font:fontSerif, color:rgbc(SB.ink) });
-      p.drawText(t.country || effectiveContinent(t) || '', { x:rx, y:PAGE_H-82, size:10, font:fontR, color:rgbc(SB.tealDark) });
+      safeDrawText(p, t.place, { x:rx, y:PAGE_H-60, size:20, font:fontSerif, color:rgbc(SB.ink) });
+      safeDrawText(p, t.country || effectiveContinent(t) || '', { x:rx, y:PAGE_H-82, size:10, font:fontR, color:rgbc(SB.tealDark) });
       const days = dayCount(t.startDate, t.endDate);
-      p.drawText(`${t.startDate} to ${t.endDate}   -   ${days} day${days!==1?'s':''}`, { x:rx, y:PAGE_H-100, size:9, font:fontR, color:rgbc(SB.inkSoft) });
+      safeDrawText(p, `${t.startDate} to ${t.endDate}   -   ${days} day${days!==1?'s':''}`, { x:rx, y:PAGE_H-100, size:9, font:fontR, color:rgbc(SB.inkSoft) });
 
       const dist = tripDistances(t);
       const rows = [];
@@ -3269,8 +3284,8 @@ async function generateScrapbookPdf(){
 
       let ry = PAGE_H-135;
       rows.forEach(([label,val])=>{
-        p.drawText(label, { x:rx, y:ry, size:9, font:fontR, color:rgbc(SB.inkSoft) });
-        p.drawText(String(val), { x:rx+130, y:ry, size:9, font:fontB, color:rgbc(SB.ink), maxWidth: HALF_W-210 });
+        safeDrawText(p, label, { x:rx, y:ry, size:9, font:fontR, color:rgbc(SB.inkSoft) });
+        safeDrawText(p, String(val), { x:rx+130, y:ry, size:9, font:fontB, color:rgbc(SB.ink), maxWidth: HALF_W-210 });
         ry -= 20;
       });
       if(t.notes){
@@ -3283,7 +3298,7 @@ async function generateScrapbookPdf(){
     btn.textContent = '⏳ Building stats (1/3)…';
     p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.ink); fillHalf(p, HALF_W, SB.ink); spine(p);
-    p.drawText('Your Travel Stats', { x:40, y:PAGE_H-50, size:22, font:fontSerif, color:rgbc(SB.paper) });
+    safeDrawText(p, 'Your Travel Stats', { x:40, y:PAGE_H-50, size:22, font:fontSerif, color:rgbc(SB.paper) });
 
     const companionCounts = {};
     sorted.forEach(t=> (t.companions||[]).forEach(n=>{ companionCounts[n] = (companionCounts[n]||0)+1; }));
@@ -3295,18 +3310,18 @@ async function generateScrapbookPdf(){
     const statPairs = [['Trips',sorted.length],['Places',uniquePlaces],['Countries',countries.size],['Continents',continents.size],['Days travelled',totalDays]];
     let statY = PAGE_H-100;
     statPairs.forEach(([label,val])=>{
-      p.drawText(String(val), { x:40, y:statY, size:20, font:fontB, color:rgbc(SB.gold) });
-      p.drawText(label, { x:110, y:statY+4, size:10, font:fontR, color:rgbc(SB.paper) });
+      safeDrawText(p, String(val), { x:40, y:statY, size:20, font:fontB, color:rgbc(SB.gold) });
+      safeDrawText(p, label, { x:110, y:statY+4, size:10, font:fontR, color:rgbc(SB.paper) });
       statY -= 34;
     });
-    if(topCompanion){ p.drawText(`Travelled with most: ${topCompanion[0]} (${topCompanion[1]})`, { x:40, y:statY-10, size:9, font:fontR, color:rgbc(SB.gold) }); statY -= 20; }
-    if(topPlace && topPlace[1]>1){ p.drawText(`Most visited: ${placeNames[topPlace[0]]} (x${topPlace[1]})`, { x:40, y:statY-10, size:9, font:fontR, color:rgbc(SB.gold) }); }
+    if(topCompanion){ safeDrawText(p, `Travelled with most: ${topCompanion[0]} (${topCompanion[1]})`, { x:40, y:statY-10, size:9, font:fontR, color:rgbc(SB.gold) }); statY -= 20; }
+    if(topPlace && topPlace[1]>1){ safeDrawText(p, `Most visited: ${placeNames[topPlace[0]]} (x${topPlace[1]})`, { x:40, y:statY-10, size:9, font:fontR, color:rgbc(SB.gold) }); }
 
     const years = [...new Set(sorted.map(t=>t.startDate.slice(0,4)))].sort();
     if(years.length){
       const yearCounts = years.map(y => sorted.filter(t=>t.startDate.slice(0,4)===y).length);
       const chartImg = await embedRasterSvg(pdfBarChartSvg(360, 460, years, yearCounts, SB.gold, SB.paper, years.length>10), 360, 460);
-      p.drawText('Trips per year', { x:HALF_W+40, y:PAGE_H-50, size:14, font:fontB, color:rgbc(SB.paper) });
+      safeDrawText(p, 'Trips per year', { x:HALF_W+40, y:PAGE_H-50, size:14, font:fontB, color:rgbc(SB.paper) });
       p.drawImage(chartImg, { x:HALF_W+36, y:PAGE_H-540, width:360, height:460 });
     }
 
@@ -3314,20 +3329,20 @@ async function generateScrapbookPdf(){
     btn.textContent = '⏳ Building stats (2/3)…';
     p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.paper); fillHalf(p, HALF_W, SB.paper); spine(p);
-    p.drawText('How You Travel', { x:40, y:PAGE_H-50, size:22, font:fontSerif, color:rgbc(SB.ink) });
+    safeDrawText(p, 'How You Travel', { x:40, y:PAGE_H-50, size:22, font:fontSerif, color:rgbc(SB.ink) });
 
     const modeCounts = { Flight: sorted.filter(t=>t.isFlight).length, Cruise: sorted.filter(t=>t.isCruise).length,
       Drive: sorted.filter(t=>t.isDrive).length, Train: sorted.filter(t=>t.isTrain).length, Boat: sorted.filter(t=>t.isBoat).length };
     const modeEntries = Object.entries(modeCounts).filter(([,c])=>c>0);
     if(modeEntries.length){
       const pieImg = await embedRasterSvg(pdfPieChartSvg(360, 300, modeEntries.map(e=>e[0]), modeEntries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink), 360, 300);
-      p.drawText('Transport mode', { x:40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.ink) });
+      safeDrawText(p, 'Transport mode', { x:40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.ink) });
       p.drawImage(pieImg, { x:36, y:PAGE_H-410, width:360, height:300 });
     }
     const companionEntries = Object.entries(companionCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
     if(companionEntries.length){
       const barImg = await embedRasterSvg(pdfBarChartSvg(360, 300, companionEntries.map(e=>e[0]), companionEntries.map(e=>e[1]), SB.tealDark, SB.ink, companionEntries.length>6), 360, 300);
-      p.drawText('Travelled with', { x:HALF_W+40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.ink) });
+      safeDrawText(p, 'Travelled with', { x:HALF_W+40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.ink) });
       p.drawImage(barImg, { x:HALF_W+36, y:PAGE_H-410, width:360, height:300 });
     }
 
@@ -3335,14 +3350,14 @@ async function generateScrapbookPdf(){
     btn.textContent = '⏳ Building stats (3/3)…';
     p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.ink); fillHalf(p, HALF_W, SB.ink); spine(p);
-    p.drawText('Where & What', { x:40, y:PAGE_H-50, size:22, font:fontSerif, color:rgbc(SB.paper) });
+    safeDrawText(p, 'Where & What', { x:40, y:PAGE_H-50, size:22, font:fontSerif, color:rgbc(SB.paper) });
 
     const continentCounts = {};
     sorted.forEach(t=>{ const c = effectiveContinent(t); if(c) continentCounts[c] = (continentCounts[c]||0)+1; });
     const contEntries = Object.entries(continentCounts).sort((a,b)=>b[1]-a[1]);
     if(contEntries.length){
       const pieImg = await embedRasterSvg(pdfPieChartSvg(360, 300, contEntries.map(e=>e[0]), contEntries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.paper), 360, 300);
-      p.drawText('Continents visited', { x:40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.paper) });
+      safeDrawText(p, 'Continents visited', { x:40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.paper) });
       p.drawImage(pieImg, { x:36, y:PAGE_H-410, width:360, height:300 });
     }
     const tripsWithCost = sorted.filter(t => effectiveCost(t) !== null && effectiveCost(t) !== undefined);
@@ -3351,13 +3366,13 @@ async function generateScrapbookPdf(){
       tripsWithCost.forEach(t=>{ const y=t.startDate.slice(0,4); spendByYear[y]=(spendByYear[y]||0)+effectiveCost(t); });
       const spendYears = Object.keys(spendByYear).sort();
       const barImg = await embedRasterSvg(pdfBarChartSvg(360, 300, spendYears, spendYears.map(y=>Math.round(spendByYear[y])), SB.gold, SB.paper, spendYears.length>8), 360, 300);
-      p.drawText(`Spend per year (${settings.currencySymbol})`, { x:HALF_W+40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.paper) });
+      safeDrawText(p, `Spend per year (${settings.currencySymbol})`, { x:HALF_W+40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.paper) });
       p.drawImage(barImg, { x:HALF_W+36, y:PAGE_H-410, width:360, height:300 });
     }else{
       const topPlaces = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
       if(topPlaces.length){
         const barImg = await embedRasterSvg(pdfBarChartSvg(360, 300, topPlaces.map(([k])=>placeNames[k]), topPlaces.map(e=>e[1]), SB.gold, SB.paper, topPlaces.length>6), 360, 300);
-        p.drawText('Most visited places', { x:HALF_W+40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.paper) });
+        safeDrawText(p, 'Most visited places', { x:HALF_W+40, y:PAGE_H-90, size:12, font:fontB, color:rgbc(SB.paper) });
         p.drawImage(barImg, { x:HALF_W+36, y:PAGE_H-410, width:360, height:300 });
       }
     }
@@ -3369,7 +3384,7 @@ async function generateScrapbookPdf(){
       const bgImg = await embedRasterSvg(buildPassportPageBgSvg(SPREAD_W, PAGE_H), SPREAD_W, PAGE_H);
       p.drawImage(bgImg, { x:0, y:0, width:SPREAD_W, height:PAGE_H });
     }catch(e){ fillHalf(p, 0, SB.paperPage); fillHalf(p, HALF_W, SB.paperPage); }
-    p.drawText('Stamps Collected', { x:30, y:PAGE_H-35, size:16, font:fontSerif, color:rgbc(SB.ink) });
+    safeDrawText(p, 'Stamps Collected', { x:30, y:PAGE_H-35, size:16, font:fontSerif, color:rgbc(SB.ink) });
 
     const stampedTrips = sorted.filter(t => !isUpcoming(t)); // no stamp for trips not yet taken
     const cols = Math.max(1, Math.ceil(Math.sqrt(stampedTrips.length * (SPREAD_W/PAGE_H))));
@@ -3393,8 +3408,8 @@ async function generateScrapbookPdf(){
     // ---------- END SPREAD ----------
     p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.ink); fillHalf(p, HALF_W, SB.ink); spine(p);
-    p.drawText('The End', { x:HALF_W-55, y:PAGE_H/2, size:22, font:fontSerif, color:rgbc(SB.paper) });
-    p.drawText('Until the next trip.', { x:HALF_W-70, y:PAGE_H/2-24, size:11, font:fontItalic, color:rgbc(SB.gold) });
+    safeDrawText(p, 'The End', { x:HALF_W-55, y:PAGE_H/2, size:22, font:fontSerif, color:rgbc(SB.paper) });
+    safeDrawText(p, 'Until the next trip.', { x:HALF_W-70, y:PAGE_H/2-24, size:11, font:fontItalic, color:rgbc(SB.gold) });
 
     const pdfBytes = await pdf.save();
     const blob = new Blob([pdfBytes], { type: 'application/pdf' });
