@@ -2783,23 +2783,42 @@ document.getElementById('printLogBtn').addEventListener('click', ()=>{
    validator using an identical Node-side prototype of this exact
    slide-building logic.
 --------------------------------------------------------------- */
-function rasterizeSvgToPngDataUrl(svgString, size){
+function rasterizeSvgToPngDataUrl(svgString, width, height){
+  height = height || width;
   return new Promise((resolve, reject)=>{
     const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(svgBlob);
     const img = new Image();
     img.onload = ()=>{
       const canvas = document.createElement('canvas');
-      canvas.width = size; canvas.height = size;
+      canvas.width = width; canvas.height = height;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, size, size);
+      ctx.drawImage(img, 0, 0, width, height);
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL('image/png'));
     };
-    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('Could not rasterize stamp')); };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('Could not rasterize image')); };
     img.src = url;
   });
 }
+
+function buildPassportPageBgSvg(w, h){
+  // Inspired by a visa/stamp page's look (cream paper, a subtle repeating
+  // watermark, a fine border) — deliberately not a replica of any real
+  // passport's actual design or security features.
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}">
+    <rect width="100%" height="100%" fill="#f3ead9"/>
+    <defs>
+      <pattern id="wm" width="90" height="90" patternUnits="userSpaceOnUse" patternTransform="rotate(20)">
+        <text x="0" y="40" font-size="13" fill="#c9a227" opacity="0.16" font-family="Georgia,serif">WAYPOINTS</text>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#wm)"/>
+    <rect x="14" y="14" width="${w-28}" height="${h-28}" fill="none" stroke="#c9a227" stroke-width="2" stroke-dasharray="2,3" opacity="0.6"/>
+  </svg>`;
+}
+
+const SCRAPBOOK_LAYOUTS = ['photo-left', 'photo-right', 'photo-top'];
 
 async function generateScrapbookPptx(){
   const btn = document.getElementById('scrapbookBtn');
@@ -2814,9 +2833,11 @@ async function generateScrapbookPptx(){
   const originalLabel = btn.textContent;
   btn.disabled = true;
 
-  const SB = { ink:'1C2B3A', paper:'F6F1E4', tealDark:'2A4F52', gold:'C9A227', inkSoft:'4A5A68' };
+  const SB = { ink:'1C2B3A', paper:'F6F1E4', tealDark:'2A4F52', gold:'C9A227', inkSoft:'4A5A68', teal:'3C6E71', rust:'A34A3A' };
+  const PAGE_W = 13.33, PAGE_H = 7.5;
   const pptx = new PptxGenJS();
   pptx.layout = 'LAYOUT_WIDE';
+  const logoSrc = (document.querySelector('.logo-home-btn img') || {}).src || null;
 
   const sorted = [...trips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
   const uniquePlaces = new Set(sorted.map(placeKey)).size;
@@ -2824,77 +2845,97 @@ async function generateScrapbookPptx(){
   const continents = new Set(sorted.map(t=>effectiveContinent(t)).filter(Boolean));
   const totalDays = sorted.filter(t=>!isUpcoming(t)).reduce((s,t)=>s+dayCount(t.startDate,t.endDate), 0);
 
+  function addTripDetailsRows(s, t, x, y, w){
+    const dist = tripDistances(t);
+    const rows = [];
+    const names = companionNames(t);
+    if(names.length) rows.push(['Travelled with', names.join(', ')]);
+    const badgeList = [t.isFlight&&'Flight', t.isCruise&&'Cruise', t.isDrive&&'Drive', t.isTrain&&'Train', t.isBoat&&'Boat'].filter(Boolean).join(', ');
+    if(badgeList) rows.push(['Travelled by', badgeList]);
+    if(dist.fromHomeKm !== null) rows.push([t.customBase ? `Distance from ${t.customBase.name}` : 'Distance from home', formatDistance(dist.fromHomeKm)]);
+    if(t.hotel) rows.push(['Stayed at', t.hotel]);
+    const cost = effectiveCost(t);
+    if(cost !== null && cost !== undefined) rows.push(['Cost', settings.currencySymbol + cost.toLocaleString()]);
+    if(t.tags && t.tags.length) rows.push(['Tags', t.tags.join(', ')]);
+    let ry = y;
+    rows.forEach(([label,val])=>{
+      s.addText(label, { x, y:ry, w:2.3, h:0.32, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
+      s.addText(String(val), { x:x+2.3, y:ry, w:w-2.3, h:0.32, fontFace:'Calibri', fontSize:12, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+      ry += 0.42;
+    });
+    if(t.notes){
+      ry += 0.25;
+      s.addText(`"${t.notes}"`, {
+        x, y:ry, w, h:Math.max(0.5, PAGE_H-0.5-ry), fontFace:'Georgia', italic:true, fontSize:13, color:SB.ink,
+        isTextBox:true, margin:0, valign:'top'
+      });
+    }
+    return ry;
+  }
+
   try{
     // ---------- TITLE SLIDE ----------
     let s = pptx.addSlide();
     s.background = { color: SB.ink };
-    s.addText('WAYPOINTS', { x:0.5, y:2.5, w:12.33, h:1.2, fontFace:'Georgia', fontSize:54, bold:true, color:SB.paper, align:'center', isTextBox:true, margin:0 });
-    s.addText('A Travel Scrapbook', { x:0.5, y:3.65, w:12.33, h:0.6, fontFace:'Calibri', fontSize:22, color:SB.gold, align:'center', isTextBox:true, margin:0 });
+    if(logoSrc){
+      try{ s.addImage({ data: logoSrc, x: PAGE_W/2-0.5, y:1.3, w:1, h:1 }); }catch(e){ /* logo is decorative — continue without it */ }
+    }
+    s.addText('WAYPOINTS', { x:0.5, y:2.5, w:12.33, h:1.1, fontFace:'Georgia', fontSize:50, bold:true, color:SB.paper, align:'center', isTextBox:true, margin:0 });
+    s.addText('A Travel Scrapbook', { x:0.5, y:3.6, w:12.33, h:0.6, fontFace:'Calibri', fontSize:22, color:SB.gold, align:'center', isTextBox:true, margin:0 });
     s.addText(`${sorted.length} trip${sorted.length!==1?'s':''}  ·  ${countries.size} countries  ·  ${continents.size} continents`, {
-      x:0.5, y:4.5, w:12.33, h:0.5, fontFace:'Calibri', fontSize:15, color:SB.paper, align:'center', isTextBox:true, margin:0
+      x:0.5, y:4.4, w:12.33, h:0.5, fontFace:'Calibri', fontSize:15, color:SB.paper, align:'center', isTextBox:true, margin:0
     });
     s.addText(`Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`, {
       x:0.5, y:6.7, w:12.33, h:0.4, fontFace:'Calibri', fontSize:11, color:SB.paper, align:'center', isTextBox:true, margin:0, transparency:30
     });
 
-    // ---------- ONE SLIDE PER TRIP ----------
+    // ---------- ONE SLIDE PER TRIP (varied layout, scrapbook feel) ----------
     for(let i=0; i<sorted.length; i++){
       const t = sorted[i];
-      btn.textContent = `⏳ Building slide ${i+2}/${sorted.length+2}…`;
+      btn.textContent = `⏳ Building slide ${i+2}/${sorted.length+5}…`;
       s = pptx.addSlide();
       s.background = { color: SB.paper };
 
-      s.addText(t.place, { x:0.5, y:0.35, w:9.5, h:0.7, fontFace:'Georgia', fontSize:30, bold:true, color:SB.ink, isTextBox:true, margin:0 });
-      s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.95, w:9.5, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
-      const days = dayCount(t.startDate, t.endDate);
-      s.addText(`${t.startDate}  →  ${t.endDate}   ·   ${days} day${days!==1?'s':''}`, {
-        x:0.5, y:1.4, w:9.5, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0
-      });
-
-      try{
-        const stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 280), 280);
-        s.addImage({ data: stampPng, x:10.9, y:0.4, w:1.8, h:1.8 });
-      }catch(e){ /* stamp badge is decorative — skip it rather than fail the whole slide */ }
-
       const hasPhoto = !!t.photo;
-      if(hasPhoto){
-        s.addShape(pptx.ShapeType.rect, { x:0.5, y:2.0, w:4.6, h:5.0, fill:{color:'FFFFFF'}, line:{type:'none'},
+      const layout = hasPhoto ? SCRAPBOOK_LAYOUTS[hashString(t.id) % SCRAPBOOK_LAYOUTS.length] : 'text-only';
+      const days = dayCount(t.startDate, t.endDate);
+      const dateLine = `${t.startDate}  →  ${t.endDate}   ·   ${days} day${days!==1?'s':''}`;
+      let stampPng = null;
+      try{ stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 280), 280); }catch(e){ /* decorative — continue without it */ }
+
+      if(layout === 'photo-left' || layout === 'photo-right'){
+        const photoX = layout === 'photo-left' ? 0.5 : 8.2;
+        const detailsX = layout === 'photo-left' ? 5.5 : 0.5;
+        const stampX = layout === 'photo-left' ? 10.9 : 0.5;
+        const stampY = layout === 'photo-left' ? 0.4 : 5.9;
+        s.addText(t.place, { x:0.5, y:0.35, w:7.4, h:0.7, fontFace:'Georgia', fontSize:30, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+        s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.95, w:7.4, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
+        s.addText(dateLine, { x:0.5, y:1.4, w:7.4, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
+        s.addShape(pptx.ShapeType.rect, { x:photoX, y:1.9, w:4.6, h:5.0, fill:{color:'FFFFFF'}, line:{type:'none'},
           shadow:{ type:'outer', color:'000000', opacity:0.3, blur:6, offset:3, angle:90 } });
-        s.addImage({ data: t.photo, x:0.7, y:2.2, w:4.2, h:4.2 });
-      }
-
-      const dist = tripDistances(t);
-      const rows = [];
-      const names = companionNames(t);
-      if(names.length) rows.push(['Travelled with', names.join(', ')]);
-      const badgeList = [t.isFlight&&'Flight', t.isCruise&&'Cruise', t.isDrive&&'Drive', t.isTrain&&'Train', t.isBoat&&'Boat'].filter(Boolean).join(', ');
-      if(badgeList) rows.push(['Travelled by', badgeList]);
-      if(dist.fromHomeKm !== null) rows.push([t.customBase ? `Distance from ${t.customBase.name}` : 'Distance from home', formatDistance(dist.fromHomeKm)]);
-      if(t.hotel) rows.push(['Stayed at', t.hotel]);
-      const cost = effectiveCost(t);
-      if(cost !== null && cost !== undefined) rows.push(['Cost', settings.currencySymbol + cost.toLocaleString()]);
-      if(t.tags && t.tags.length) rows.push(['Tags', t.tags.join(', ')]);
-
-      const detailsX = hasPhoto ? 5.5 : 0.5;
-      const detailsW = hasPhoto ? 7.3 : 12.3;
-      let ry = 2.1;
-      rows.forEach(([label,val])=>{
-        s.addText(label, { x:detailsX, y:ry, w:2.3, h:0.32, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
-        s.addText(String(val), { x:detailsX+2.3, y:ry, w:detailsW-2.3, h:0.32, fontFace:'Calibri', fontSize:12, bold:true, color:SB.ink, isTextBox:true, margin:0 });
-        ry += 0.42;
-      });
-
-      if(t.notes){
-        ry += 0.25;
-        s.addText(`"${t.notes}"`, {
-          x:detailsX, y:ry, w:detailsW, h:Math.max(0.5, 7.0-ry), fontFace:'Georgia', italic:true, fontSize:13, color:SB.ink,
-          isTextBox:true, margin:0, valign:'top'
-        });
+        s.addImage({ data: t.photo, x:photoX+0.2, y:2.1, w:4.2, h:4.2 });
+        if(stampPng) s.addImage({ data: stampPng, x:stampX, y:stampY, w:1.6, h:1.6 });
+        addTripDetailsRows(s, t, detailsX, 2.1, 7.3);
+      }else if(layout === 'photo-top'){
+        s.addText(t.place, { x:0.5, y:0.3, w:9.5, h:0.6, fontFace:'Georgia', fontSize:28, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+        s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.85, w:9.5, h:0.35, fontFace:'Calibri', fontSize:13, color:SB.tealDark, isTextBox:true, margin:0 });
+        s.addShape(pptx.ShapeType.rect, { x:4.9, y:1.3, w:3.5, h:3.5, fill:{color:'FFFFFF'}, line:{type:'none'},
+          shadow:{ type:'outer', color:'000000', opacity:0.3, blur:6, offset:3, angle:90 } });
+        s.addImage({ data: t.photo, x:5.05, y:1.45, w:3.2, h:3.2 });
+        if(stampPng) s.addImage({ data: stampPng, x:11.0, y:0.4, w:1.7, h:1.7 });
+        s.addText(dateLine, { x:0.5, y:5.0, w:12.33, h:0.3, fontFace:'Calibri', fontSize:11, color:SB.inkSoft, align:'center', isTextBox:true, margin:0 });
+        addTripDetailsRows(s, t, 2.5, 5.4, 8.33);
+      }else{
+        s.addText(t.place, { x:0.5, y:0.35, w:9.5, h:0.7, fontFace:'Georgia', fontSize:30, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+        s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.95, w:9.5, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
+        s.addText(dateLine, { x:0.5, y:1.4, w:9.5, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
+        if(stampPng) s.addImage({ data: stampPng, x:10.5, y:2.2, w:2.4, h:2.4 });
+        addTripDetailsRows(s, t, 0.5, 2.1, 9.5);
       }
     }
 
-    // ---------- SUMMARY SLIDE ----------
-    btn.textContent = '⏳ Building summary…';
+    // ---------- STATS SLIDE 1: overview + trips per year ----------
+    btn.textContent = `⏳ Building stats (1/3)…`;
     s = pptx.addSlide();
     s.background = { color: SB.ink };
     s.addText('Your Travel Stats', { x:0.5, y:0.4, w:12.33, h:0.7, fontFace:'Georgia', fontSize:32, bold:true, color:SB.paper, isTextBox:true, margin:0 });
@@ -2907,11 +2948,8 @@ async function generateScrapbookPptx(){
     const topPlace = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1])[0];
 
     const statCards = [
-      ['Trips', String(sorted.length)],
-      ['Places', String(uniquePlaces)],
-      ['Countries', String(countries.size)],
-      ['Continents', String(continents.size)],
-      ['Days travelled', String(totalDays)],
+      ['Trips', String(sorted.length)], ['Places', String(uniquePlaces)], ['Countries', String(countries.size)],
+      ['Continents', String(continents.size)], ['Days travelled', String(totalDays)],
     ];
     let sx = 0.5;
     const cardW = 12.33/statCards.length - 0.15;
@@ -2947,6 +2985,105 @@ async function generateScrapbookPptx(){
       });
     }
 
+    // ---------- STATS SLIDE 2: how you travel + who with ----------
+    btn.textContent = `⏳ Building stats (2/3)…`;
+    s = pptx.addSlide();
+    s.background = { color: SB.paper };
+    s.addText('How You Travel', { x:0.5, y:0.35, w:12.33, h:0.6, fontFace:'Georgia', fontSize:28, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+
+    const modeCounts = {
+      Flight: sorted.filter(t=>t.isFlight).length, Cruise: sorted.filter(t=>t.isCruise).length,
+      Drive: sorted.filter(t=>t.isDrive).length, Train: sorted.filter(t=>t.isTrain).length, Boat: sorted.filter(t=>t.isBoat).length
+    };
+    const modeEntries = Object.entries(modeCounts).filter(([,c])=>c>0);
+    if(modeEntries.length){
+      s.addChart(pptx.ChartType.pie, [{ name:'Mode', labels:modeEntries.map(e=>e[0]), values:modeEntries.map(e=>e[1]) }], {
+        x:0.5, y:1.2, w:6, h:5.7, showTitle:true, title:'Transport mode', titleColor:SB.ink, titleFontFace:'Calibri', titleFontSize:14,
+        showValue:true, dataLabelColor:'FFFFFF', chartColors:[SB.teal,SB.gold,SB.rust,'6B5B95','2A4F52'], showLegend:true, legendPos:'b', legendColor:SB.ink
+      });
+    }
+    const companionEntries = Object.entries(companionCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    if(companionEntries.length){
+      s.addChart(pptx.ChartType.bar, [{ name:'Trips', labels:companionEntries.map(e=>e[0]), values:companionEntries.map(e=>e[1]) }], {
+        x:6.8, y:1.2, w:6, h:5.7, showTitle:true, title:'Travelled with', titleColor:SB.ink, titleFontFace:'Calibri', titleFontSize:14, barDir:'bar',
+        showValue:true, dataLabelPosition:'outEnd', dataLabelColor:SB.ink, chartColors:[SB.tealDark], showLegend:false,
+        catAxisLabelColor:SB.ink, valAxisLabelColor:SB.ink, valGridLine:{ color:'ddd0ac', size:1 }, catGridLine:{ style:'none' }
+      });
+    }
+
+    // ---------- STATS SLIDE 3: continents + spend or top places ----------
+    btn.textContent = `⏳ Building stats (3/3)…`;
+    s = pptx.addSlide();
+    s.background = { color: SB.ink };
+    s.addText('Where & What', { x:0.5, y:0.35, w:12.33, h:0.6, fontFace:'Georgia', fontSize:28, bold:true, color:SB.paper, isTextBox:true, margin:0 });
+
+    const continentCounts = {};
+    sorted.forEach(t=>{ const c = effectiveContinent(t); if(c) continentCounts[c] = (continentCounts[c]||0)+1; });
+    const contEntries = Object.entries(continentCounts).sort((a,b)=>b[1]-a[1]);
+    if(contEntries.length){
+      s.addChart(pptx.ChartType.pie, [{ name:'Trips', labels:contEntries.map(e=>e[0]), values:contEntries.map(e=>e[1]) }], {
+        x:0.5, y:1.2, w:6, h:5.7, showTitle:true, title:'Continents visited', titleColor:SB.paper, titleFontFace:'Calibri', titleFontSize:14,
+        showValue:true, dataLabelColor:'FFFFFF', chartColors:[SB.teal,SB.gold,SB.rust,'6B5B95','4a7c59','2a4f52','8899aa'], showLegend:true, legendPos:'b', legendColor:SB.paper
+      });
+    }
+    const tripsWithCost = sorted.filter(t => effectiveCost(t) !== null && effectiveCost(t) !== undefined);
+    if(tripsWithCost.length){
+      const spendByYear = {};
+      tripsWithCost.forEach(t=>{ const y=t.startDate.slice(0,4); spendByYear[y]=(spendByYear[y]||0)+effectiveCost(t); });
+      const spendYears = Object.keys(spendByYear).sort();
+      s.addChart(pptx.ChartType.bar, [{ name:'Spend', labels:spendYears, values:spendYears.map(y=>Math.round(spendByYear[y])) }], {
+        x:6.8, y:1.2, w:6, h:5.7, showTitle:true, title:`Spend per year (${settings.currencySymbol})`, titleColor:SB.paper, titleFontFace:'Calibri', titleFontSize:14,
+        showValue:true, dataLabelPosition:'outEnd', dataLabelColor:SB.paper, chartColors:[SB.gold], showLegend:false,
+        catAxisLabelColor:SB.paper, valAxisLabelColor:SB.paper, valGridLine:{ color:'344555', size:1 }, catGridLine:{ style:'none' }
+      });
+    }else{
+      const topPlaces = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1]).slice(0,8);
+      if(topPlaces.length){
+        s.addChart(pptx.ChartType.bar, [{ name:'Visits', labels:topPlaces.map(([k])=>placeNames[k]), values:topPlaces.map(e=>e[1]) }], {
+          x:6.8, y:1.2, w:6, h:5.7, showTitle:true, title:'Most visited places', titleColor:SB.paper, titleFontFace:'Calibri', titleFontSize:14, barDir:'bar',
+          showValue:true, dataLabelPosition:'outEnd', dataLabelColor:SB.paper, chartColors:[SB.gold], showLegend:false,
+          catAxisLabelColor:SB.paper, valAxisLabelColor:SB.paper, valGridLine:{ color:'344555', size:1 }, catGridLine:{ style:'none' }
+        });
+      }
+    }
+
+    // ---------- PASSPORT STAMPS PAGE ----------
+    btn.textContent = `⏳ Building your stamp page…`;
+    s = pptx.addSlide();
+    try{
+      const bgPng = await rasterizeSvgToPngDataUrl(buildPassportPageBgSvg(1600, 900), 1600, 900);
+      s.background = { data: bgPng };
+    }catch(e){ s.background = { color: '#f3ead9' }; }
+    s.addText('Stamps Collected', { x:0.5, y:0.2, w:12.33, h:0.5, fontFace:'Georgia', fontSize:20, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+
+    const cols = Math.max(1, Math.ceil(Math.sqrt(sorted.length * (PAGE_W/PAGE_H))));
+    const rows = Math.max(1, Math.ceil(sorted.length / cols));
+    const cellW = PAGE_W / cols, cellH = (PAGE_H-0.9) / rows;
+    const stampSize = Math.min(cellW, cellH) * 1.3;
+    for(let i=0; i<sorted.length; i++){
+      const t = sorted[i];
+      const seed = hashString(t.id);
+      const col = i % cols, row = Math.floor(i/cols);
+      const jitterX = ((seed % 100)/100 - 0.5) * cellW * 0.4;
+      const jitterY = (((seed>>4) % 100)/100 - 0.5) * cellH * 0.4;
+      const cxPos = col*cellW + cellW/2 + jitterX;
+      const cyPos = 0.9 + row*cellH + cellH/2 + jitterY;
+      const rotation = (seed % 40) - 20;
+      try{
+        const stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 300, true), 300);
+        s.addImage({ data: stampPng, x: cxPos-stampSize/2, y: cyPos-stampSize/2, w: stampSize, h: stampSize, rotate: rotation });
+      }catch(e){ /* skip this one stamp rather than fail the whole page */ }
+    }
+
+    // ---------- END SLIDE ----------
+    s = pptx.addSlide();
+    s.background = { color: SB.ink };
+    if(logoSrc){
+      try{ s.addImage({ data: logoSrc, x: PAGE_W/2-0.4, y:2.5, w:0.8, h:0.8 }); }catch(e){}
+    }
+    s.addText('The End', { x:0.5, y:3.5, w:12.33, h:0.9, fontFace:'Georgia', fontSize:40, bold:true, color:SB.paper, align:'center', isTextBox:true, margin:0 });
+    s.addText('Until the next trip.', { x:0.5, y:4.4, w:12.33, h:0.5, fontFace:'Calibri', italic:true, fontSize:16, color:SB.gold, align:'center', isTextBox:true, margin:0 });
+
     await pptx.writeFile({ fileName: `waypoints-scrapbook-${todayStr()}.pptx` });
   }catch(e){
     alert("Couldn't generate the scrapbook: " + e.message);
@@ -2956,6 +3093,7 @@ async function generateScrapbookPptx(){
   }
 }
 document.getElementById('scrapbookBtn').addEventListener('click', generateScrapbookPptx);
+
 
 let pendingImport = null;
 
@@ -3352,8 +3490,9 @@ function cutRectPoints(cx, cy, w, h, cut){
   ].join(' ');
 }
 
-function buildStampSvg(trip, pixelSize){
+function buildStampSvg(trip, pixelSize, transparent){
   const sizeAttr = pixelSize ? `width="${pixelSize}" height="${pixelSize}"` : `width="100%" height="100%"`;
+  const bgFill = transparent ? 'none' : '#fffdf7';
   const seed = hashString(trip.id);
   const color = STAMP_INK_COLORS[seed % STAMP_INK_COLORS.length];
   const shape = STAMP_SHAPES[Math.floor(seed/7) % STAMP_SHAPES.length];
@@ -3375,7 +3514,7 @@ function buildStampSvg(trip, pixelSize){
     const topPath = `M ${cx-r},${cy} A ${r},${r} 0 0 1 ${cx+r},${cy}`;
     const botPath = `M ${cx-r},${cy} A ${r},${r} 0 0 0 ${cx+r},${cy}`;
     inner = `
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="#fffdf7" stroke="${color}" stroke-width="3" stroke-dasharray="14,3,7,3"/>
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${bgFill}" stroke="${color}" stroke-width="3" stroke-dasharray="14,3,7,3"/>
       ${shape==='double-circle' ? `<circle cx="${cx}" cy="${cy}" r="${r-9}" fill="none" stroke="${color}" stroke-width="1.5"/>` : ''}
       <path id="${uid}t" d="${topPath}" fill="none"/>
       <path id="${uid}b" d="${botPath}" fill="none"/>
@@ -3390,7 +3529,7 @@ function buildStampSvg(trip, pixelSize){
     const topPath = `M ${cx-rx},${cy} A ${rx},${ry} 0 0 1 ${cx+rx},${cy}`;
     const botPath = `M ${cx-rx},${cy} A ${rx},${ry} 0 0 0 ${cx+rx},${cy}`;
     inner = `
-      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="#fffdf7" stroke="${color}" stroke-width="2.5"/>
+      <ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${bgFill}" stroke="${color}" stroke-width="2.5"/>
       <path id="${uid}t" d="${topPath}" fill="none"/>
       <path id="${uid}b" d="${botPath}" fill="none"/>
       <text font-size="9" font-weight="700" letter-spacing="1.2" fill="${color}"><textPath href="#${uid}t" startOffset="50%" text-anchor="middle">${escapeHtml(country.slice(0,22))}</textPath></text>
@@ -3399,7 +3538,7 @@ function buildStampSvg(trip, pixelSize){
     `;
   }else if(shape === 'hex'){
     inner = `
-      <polygon points="${hexPoints(cx,cy,58)}" fill="#fffdf7" stroke="${color}" stroke-width="3"/>
+      <polygon points="${hexPoints(cx,cy,58)}" fill="${bgFill}" stroke="${color}" stroke-width="3"/>
       <text x="${cx}" y="${cy-26}" font-size="8.5" font-weight="700" text-anchor="middle" fill="${color}" letter-spacing="1">${escapeHtml(country.slice(0,18))}</text>
       <text x="${cx}" y="${cy+2}" font-size="14" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
       <line x1="${cx-30}" y1="${cy+12}" x2="${cx+30}" y2="${cy+12}" stroke="${color}" stroke-width="1"/>
@@ -3407,7 +3546,7 @@ function buildStampSvg(trip, pixelSize){
     `;
   }else{ // rect
     inner = `
-      <polygon points="${cutRectPoints(cx,cy,108,84,14)}" fill="#fffdf7" stroke="${color}" stroke-width="3"/>
+      <polygon points="${cutRectPoints(cx,cy,108,84,14)}" fill="${bgFill}" stroke="${color}" stroke-width="3"/>
       <text x="${cx}" y="${cy-22}" font-size="8.5" font-weight="700" text-anchor="middle" fill="${color}" letter-spacing="1">${escapeHtml(country.slice(0,18))}</text>
       <text x="${cx}" y="${cy+4}" font-size="15" font-weight="800" text-anchor="middle" fill="${color}" font-family="Fraunces, serif">${escapeHtml(place.slice(0,14))}</text>
       <text x="${cx}" y="${cy+26}" font-size="8.5" text-anchor="middle" fill="${color}" letter-spacing="0.5">${escapeHtml(date)}</text>
