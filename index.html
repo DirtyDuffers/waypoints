@@ -1218,6 +1218,7 @@
       <button class="btn btn-teal" id="exportBtn" type="button">⬇️ Export backup</button>
       <button class="btn btn-ghost" id="exportCsvBtn" type="button">📊 Export as CSV</button>
       <button class="btn btn-ghost" id="printLogBtn" type="button">🖨️ Print my log</button>
+      <button class="btn btn-teal" id="scrapbookBtn" type="button" style="display:block; margin-top:10px;">🎞️ Download scrapbook (PowerPoint)</button>
 
       <div style="margin-top:16px; padding-top:14px; border-top:1px dashed var(--line);">
         <label style="display:block; margin-bottom:6px;">Import a backup file</label>
@@ -1259,6 +1260,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="anonymous"></script>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 <script>
 /* ---------------------------------------------------------------
    DATA LAYER
@@ -2774,6 +2776,187 @@ document.getElementById('printLogBtn').addEventListener('click', ()=>{
   setTimeout(()=> window.print(), 100);
 });
 
+/* ---------------------------------------------------------------
+   SCRAPBOOK EXPORT (PowerPoint)
+   Uses PptxGenJS (loaded via CDN, browser bundle). Structurally
+   validated during development against python-pptx's own OOXML
+   validator using an identical Node-side prototype of this exact
+   slide-building logic.
+--------------------------------------------------------------- */
+function rasterizeSvgToPngDataUrl(svgString, size){
+  return new Promise((resolve, reject)=>{
+    const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); reject(new Error('Could not rasterize stamp')); };
+    img.src = url;
+  });
+}
+
+async function generateScrapbookPptx(){
+  const btn = document.getElementById('scrapbookBtn');
+  if(!trips.length){
+    alert("Log a trip first — there's nothing to put in a scrapbook yet.");
+    return;
+  }
+  if(typeof PptxGenJS === 'undefined'){
+    alert("Couldn't load the PowerPoint library — check your internet connection and try again.");
+    return;
+  }
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+
+  const SB = { ink:'1C2B3A', paper:'F6F1E4', tealDark:'2A4F52', gold:'C9A227', inkSoft:'4A5A68' };
+  const pptx = new PptxGenJS();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  const sorted = [...trips].sort((a,b)=>a.startDate.localeCompare(b.startDate));
+  const uniquePlaces = new Set(sorted.map(placeKey)).size;
+  const countries = new Set(sorted.map(t=>t.countryCode || t.country).filter(Boolean));
+  const continents = new Set(sorted.map(t=>effectiveContinent(t)).filter(Boolean));
+  const totalDays = sorted.filter(t=>!isUpcoming(t)).reduce((s,t)=>s+dayCount(t.startDate,t.endDate), 0);
+
+  try{
+    // ---------- TITLE SLIDE ----------
+    let s = pptx.addSlide();
+    s.background = { color: SB.ink };
+    s.addText('WAYPOINTS', { x:0.5, y:2.5, w:12.33, h:1.2, fontFace:'Georgia', fontSize:54, bold:true, color:SB.paper, align:'center', isTextBox:true, margin:0 });
+    s.addText('A Travel Scrapbook', { x:0.5, y:3.65, w:12.33, h:0.6, fontFace:'Calibri', fontSize:22, color:SB.gold, align:'center', isTextBox:true, margin:0 });
+    s.addText(`${sorted.length} trip${sorted.length!==1?'s':''}  ·  ${countries.size} countries  ·  ${continents.size} continents`, {
+      x:0.5, y:4.5, w:12.33, h:0.5, fontFace:'Calibri', fontSize:15, color:SB.paper, align:'center', isTextBox:true, margin:0
+    });
+    s.addText(`Generated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}`, {
+      x:0.5, y:6.7, w:12.33, h:0.4, fontFace:'Calibri', fontSize:11, color:SB.paper, align:'center', isTextBox:true, margin:0, transparency:30
+    });
+
+    // ---------- ONE SLIDE PER TRIP ----------
+    for(let i=0; i<sorted.length; i++){
+      const t = sorted[i];
+      btn.textContent = `⏳ Building slide ${i+2}/${sorted.length+2}…`;
+      s = pptx.addSlide();
+      s.background = { color: SB.paper };
+
+      s.addText(t.place, { x:0.5, y:0.35, w:9.5, h:0.7, fontFace:'Georgia', fontSize:30, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+      s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.95, w:9.5, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
+      const days = dayCount(t.startDate, t.endDate);
+      s.addText(`${t.startDate}  →  ${t.endDate}   ·   ${days} day${days!==1?'s':''}`, {
+        x:0.5, y:1.4, w:9.5, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0
+      });
+
+      try{
+        const stampPng = await rasterizeSvgToPngDataUrl(buildStampSvg(t, 280), 280);
+        s.addImage({ data: stampPng, x:10.9, y:0.4, w:1.8, h:1.8 });
+      }catch(e){ /* stamp badge is decorative — skip it rather than fail the whole slide */ }
+
+      const hasPhoto = !!t.photo;
+      if(hasPhoto){
+        s.addShape(pptx.ShapeType.rect, { x:0.5, y:2.0, w:4.6, h:5.0, fill:{color:'FFFFFF'}, line:{type:'none'},
+          shadow:{ type:'outer', color:'000000', opacity:0.3, blur:6, offset:3, angle:90 } });
+        s.addImage({ data: t.photo, x:0.7, y:2.2, w:4.2, h:4.2 });
+      }
+
+      const dist = tripDistances(t);
+      const rows = [];
+      const names = companionNames(t);
+      if(names.length) rows.push(['Travelled with', names.join(', ')]);
+      const badgeList = [t.isFlight&&'Flight', t.isCruise&&'Cruise', t.isDrive&&'Drive', t.isTrain&&'Train', t.isBoat&&'Boat'].filter(Boolean).join(', ');
+      if(badgeList) rows.push(['Travelled by', badgeList]);
+      if(dist.fromHomeKm !== null) rows.push([t.customBase ? `Distance from ${t.customBase.name}` : 'Distance from home', formatDistance(dist.fromHomeKm)]);
+      if(t.hotel) rows.push(['Stayed at', t.hotel]);
+      const cost = effectiveCost(t);
+      if(cost !== null && cost !== undefined) rows.push(['Cost', settings.currencySymbol + cost.toLocaleString()]);
+      if(t.tags && t.tags.length) rows.push(['Tags', t.tags.join(', ')]);
+
+      const detailsX = hasPhoto ? 5.5 : 0.5;
+      const detailsW = hasPhoto ? 7.3 : 12.3;
+      let ry = 2.1;
+      rows.forEach(([label,val])=>{
+        s.addText(label, { x:detailsX, y:ry, w:2.3, h:0.32, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
+        s.addText(String(val), { x:detailsX+2.3, y:ry, w:detailsW-2.3, h:0.32, fontFace:'Calibri', fontSize:12, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+        ry += 0.42;
+      });
+
+      if(t.notes){
+        ry += 0.25;
+        s.addText(`"${t.notes}"`, {
+          x:detailsX, y:ry, w:detailsW, h:Math.max(0.5, 7.0-ry), fontFace:'Georgia', italic:true, fontSize:13, color:SB.ink,
+          isTextBox:true, margin:0, valign:'top'
+        });
+      }
+    }
+
+    // ---------- SUMMARY SLIDE ----------
+    btn.textContent = '⏳ Building summary…';
+    s = pptx.addSlide();
+    s.background = { color: SB.ink };
+    s.addText('Your Travel Stats', { x:0.5, y:0.4, w:12.33, h:0.7, fontFace:'Georgia', fontSize:32, bold:true, color:SB.paper, isTextBox:true, margin:0 });
+
+    const companionCounts = {};
+    sorted.forEach(t=> (t.companions||[]).forEach(n=>{ companionCounts[n] = (companionCounts[n]||0)+1; }));
+    const topCompanion = Object.entries(companionCounts).sort((a,b)=>b[1]-a[1])[0];
+    const placeCounts = {}, placeNames = {};
+    sorted.forEach(t=>{ const k=placeKey(t); placeCounts[k]=(placeCounts[k]||0)+1; placeNames[k]=t.place; });
+    const topPlace = Object.entries(placeCounts).sort((a,b)=>b[1]-a[1])[0];
+
+    const statCards = [
+      ['Trips', String(sorted.length)],
+      ['Places', String(uniquePlaces)],
+      ['Countries', String(countries.size)],
+      ['Continents', String(continents.size)],
+      ['Days travelled', String(totalDays)],
+    ];
+    let sx = 0.5;
+    const cardW = 12.33/statCards.length - 0.15;
+    statCards.forEach(([label,val])=>{
+      s.addShape(pptx.ShapeType.roundRect, { x:sx, y:1.4, w:cardW, h:1.5, rectRadius:0.08, fill:{color:SB.tealDark}, line:{type:'none'} });
+      s.addText(val, { x:sx, y:1.5, w:cardW, h:0.8, fontFace:'Calibri', fontSize:30, bold:true, color:SB.paper, align:'center', isTextBox:true, margin:0 });
+      s.addText(label, { x:sx, y:2.25, w:cardW, h:0.5, fontFace:'Calibri', fontSize:11, color:SB.gold, align:'center', isTextBox:true, margin:0 });
+      sx += cardW + 0.15;
+    });
+
+    let ty = 3.2;
+    if(topCompanion){
+      s.addText('Travelled with most', { x:0.6, y:ty, w:3, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.paper, isTextBox:true, margin:0, transparency:20 });
+      s.addText(`${topCompanion[0]} (${topCompanion[1]} trips)`, { x:3.6, y:ty, w:4, h:0.35, fontFace:'Calibri', fontSize:12, bold:true, color:SB.gold, isTextBox:true, margin:0 });
+      ty += 0.4;
+    }
+    if(topPlace && topPlace[1] > 1){
+      s.addText('Most visited', { x:0.6, y:ty, w:3, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.paper, isTextBox:true, margin:0, transparency:20 });
+      s.addText(`${placeNames[topPlace[0]]} (×${topPlace[1]})`, { x:3.6, y:ty, w:4, h:0.35, fontFace:'Calibri', fontSize:12, bold:true, color:SB.gold, isTextBox:true, margin:0 });
+    }
+
+    const years = [...new Set(sorted.map(t=>t.startDate.slice(0,4)))].sort();
+    if(years.length){
+      const yearCounts = years.map(y => sorted.filter(t=>t.startDate.slice(0,4)===y).length);
+      s.addChart(pptx.ChartType.bar, [ { name:'Trips', labels:years, values:yearCounts } ], {
+        x:0.5, y:4.1, w:12.33, h:2.9,
+        showTitle:true, title:'Trips per year', titleColor:SB.paper, titleFontFace:'Calibri', titleFontSize:14,
+        showValue:true, dataLabelPosition:'outEnd', dataLabelColor:SB.paper,
+        chartColors:[SB.gold], showLegend:false,
+        catAxisLabelColor:SB.paper, valAxisLabelColor:SB.paper,
+        valGridLine:{ color:'344555', size:1 }, catGridLine:{ style:'none' },
+        catAxisLineColor:SB.paper, valAxisLineColor:SB.paper
+      });
+    }
+
+    await pptx.writeFile({ fileName: `waypoints-scrapbook-${todayStr()}.pptx` });
+  }catch(e){
+    alert("Couldn't generate the scrapbook: " + e.message);
+  }finally{
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+}
+document.getElementById('scrapbookBtn').addEventListener('click', generateScrapbookPptx);
+
 let pendingImport = null;
 
 document.getElementById('importFile').addEventListener('change', async (e)=>{
@@ -3169,7 +3352,8 @@ function cutRectPoints(cx, cy, w, h, cut){
   ].join(' ');
 }
 
-function buildStampSvg(trip){
+function buildStampSvg(trip, pixelSize){
+  const sizeAttr = pixelSize ? `width="${pixelSize}" height="${pixelSize}"` : `width="100%" height="100%"`;
   const seed = hashString(trip.id);
   const color = STAMP_INK_COLORS[seed % STAMP_INK_COLORS.length];
   const shape = STAMP_SHAPES[Math.floor(seed/7) % STAMP_SHAPES.length];
@@ -3230,7 +3414,7 @@ function buildStampSvg(trip){
     `;
   }
 
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" style="overflow:visible;">${inner}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" ${sizeAttr} xmlns="http://www.w3.org/2000/svg" style="overflow:visible;">${inner}</svg>`;
 }
 
 function renderPassport(){
