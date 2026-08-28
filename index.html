@@ -2371,6 +2371,52 @@ function renderStorageUsage(){
   `;
 }
 
+document.getElementById('recompressPhotosBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('recompressPhotosBtn');
+  const tripsWithPhotos = trips.filter(t => t.photo);
+  if(!tripsWithPhotos.length){
+    alert("No trip photos to recompress.");
+    return;
+  }
+  const originalLabel = btn.textContent;
+  btn.disabled = true;
+
+  let charsBefore = 0, charsAfter = 0, skipped = 0;
+  for(let i=0; i<tripsWithPhotos.length; i++){
+    btn.textContent = `⏳ Recompressing ${i+1}/${tripsWithPhotos.length}…`;
+    const t = tripsWithPhotos[i];
+    charsBefore += t.photo.length;
+    try{
+      const recompressed = await compressImageSrcToDataUrl(t.photo);
+      t.photo = recompressed;
+      charsAfter += recompressed.length;
+    }catch(e){
+      skipped++;
+      charsAfter += t.photo.length; // left unchanged
+    }
+  }
+
+  const ok = saveTrips(trips);
+  btn.disabled = false;
+  btn.textContent = originalLabel;
+
+  if(ok){
+    renderStorageUsage();
+    renderTrips();
+    const beforeKB = Math.round(charsBefore * 0.75 / 1024); // base64 chars -> approx raw bytes
+    const afterKB = Math.round(charsAfter * 0.75 / 1024);
+    const doneCount = tripsWithPhotos.length - skipped;
+    alert(
+      `Recompressed ${doneCount} photo${doneCount!==1?'s':''}${skipped ? ` (${skipped} couldn't be read and were left as-is)` : ''}.\n\n` +
+      `Photo storage: ~${beforeKB.toLocaleString()} KB → ~${afterKB.toLocaleString()} KB.`
+    );
+  }
+  // If saveTrips failed, it already showed the storage-full alert itself, and
+  // the in-memory `trips` array now holds the recompressed (smaller) photos
+  // even though the write failed — trying again should have a much better
+  // chance of fitting, but nothing on disk changed, so no data was lost.
+});
+
 function renderSettingsView(){
   applyTheme();
   renderStorageUsage();
