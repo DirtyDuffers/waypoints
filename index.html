@@ -2863,7 +2863,7 @@ async function generateScrapbookPptx(){
     let ry = y;
     rows.forEach(([label,val])=>{
       s.addText(label, { x, y:ry, w:2.3, h:rowH-0.06, fontFace:'Calibri', fontSize, color:SB.inkSoft, isTextBox:true, margin:0 });
-      s.addText(String(val), { x:x+2.3, y:ry, w:w-2.3, h:rowH-0.06, fontFace:'Calibri', fontSize, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+      s.addText(truncateToWidthPptx(String(val), fontSize, w-2.3, true), { x:x+2.3, y:ry, w:w-2.3, h:rowH-0.06, fontFace:'Calibri', fontSize, bold:true, color:SB.ink, isTextBox:true, margin:0 });
       ry += rowH;
     });
     if(t.notes){
@@ -2910,13 +2910,13 @@ async function generateScrapbookPptx(){
       }
 
       const titleW = upcoming ? 7.6 : 9.5;
-      s.addText(t.place, { x:0.5, y:0.35, w:titleW, h:0.7, fontFace:'Georgia', fontSize:30, bold:true, color:SB.ink, isTextBox:true, margin:0 });
-      s.addText(t.country || effectiveContinent(t) || '', { x:0.5, y:0.95, w:titleW, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
+      s.addText(truncateToWidthPptx(t.place, 30, titleW, true), { x:0.5, y:0.35, w:titleW, h:0.7, fontFace:'Georgia', fontSize:30, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+      s.addText(truncateToWidthPptx(t.country || effectiveContinent(t) || '', 14, titleW, false), { x:0.5, y:0.95, w:titleW, h:0.4, fontFace:'Calibri', fontSize:14, color:SB.tealDark, isTextBox:true, margin:0 });
       s.addText(dateLine, { x:0.5, y:1.4, w:titleW, h:0.35, fontFace:'Calibri', fontSize:12, color:SB.inkSoft, isTextBox:true, margin:0 });
 
       const grp = groupContext(t, sorted);
       if(grp){
-        s.addText(`Part of "${grp.groupName}"  ·  stop ${grp.index} of ${grp.total}`, {
+        s.addText(truncateToWidthPptx(`Part of "${grp.groupName}"  ·  stop ${grp.index} of ${grp.total}`, 10, titleW, false), {
           x:0.5, y:1.72, w:titleW, h:0.3, fontFace:'Calibri', fontSize:10, italic:true, color:SB.gold, isTextBox:true, margin:0
         });
       }
@@ -3055,48 +3055,46 @@ async function generateScrapbookPptx(){
       }
     }
 
-    // ---------- FULL DASHBOARD: 6 mini charts + calendar strip ----------
+    // ---------- FULL DASHBOARD: 6 mini charts ----------
     btn.textContent = `⏳ Building your full dashboard…`;
     s = pptx.addSlide();
     s.background = { color: SB.paper };
-    s.addText('The Full Dashboard', { x:0.5, y:0.25, w:12.33, h:0.5, fontFace:'Georgia', fontSize:20, bold:true, color:SB.ink, isTextBox:true, margin:0 });
+    s.addText('The Full Dashboard', { x:0.5, y:0.3, w:12.33, h:0.5, fontFace:'Georgia', fontSize:22, bold:true, color:SB.ink, isTextBox:true, margin:0 });
 
     const dd = computeDashboardData(sorted);
-    const tileW = 3.98, tileH = 2.35, gapX = 0.145, gridX0 = 0.5, gridY0 = 0.85;
+    const tileW = 3.98, tileH = 3.0, gapX = 0.145, gridX0 = 0.5, gridY0 = 1.05;
+    // Each chart is rasterized at exactly the pixel size it will be displayed
+    // at, so the aspect ratio can never mismatch and stretch/warp the image —
+    // the SVG builder gets told the exact target size rather than using a
+    // fixed size that happened to be close (but not identical) to it.
     async function placeTile(col, row, title, svgBuilder){
-      const x = gridX0 + col*(tileW+gapX), y = gridY0 + row*(tileH+0.15);
+      const x = gridX0 + col*(tileW+gapX), y = gridY0 + row*(tileH+0.2);
       s.addText(title, { x, y, w:tileW, h:0.25, fontFace:'Calibri', fontSize:10, bold:true, color:SB.inkSoft, isTextBox:true, margin:0 });
       try{
-        const svg = svgBuilder();
-        const img = await rasterizeSvgToPngDataUrl(svg, Math.round(tileW*140), Math.round((tileH-0.25)*140));
-        s.addImage({ data: img, x, y:y+0.25, w:tileW, h:tileH-0.25 });
+        const dispW = tileW, dispH = tileH-0.25;
+        const pxW = Math.round(dispW*140), pxH = Math.round(dispH*140);
+        const svg = svgBuilder(pxW, pxH);
+        const img = await rasterizeSvgToPngDataUrl(svg, pxW, pxH);
+        s.addImage({ data: img, x, y:y+0.25, w:dispW, h:dispH });
       }catch(e){ /* skip this one tile rather than fail the whole dashboard */ }
     }
 
-    await placeTile(0, 0, '📏 Distance over time', () =>
-      miniLineChartSvg(560, 296, dd.years, dd.distanceOverTime, SB.gold, SB.ink));
-    await placeTile(1, 0, '📏 Average trip length over time', () =>
-      miniLineChartSvg(560, 296, dd.years, dd.avgLengthOverTime, SB.teal, SB.ink));
-    await placeTile(2, 0, '🗓️ Trips by month', () =>
-      pdfBarChartSvg(560, 296, dd.monthNames, dd.monthCounts, SB.rust, SB.ink, false));
-    await placeTile(0, 1, '🚦 How you travel', () => {
+    await placeTile(0, 0, '📏 Distance over time', (w,h) =>
+      miniLineChartSvg(w, h, dd.years, dd.distanceOverTime, SB.gold, SB.ink));
+    await placeTile(1, 0, '📏 Average trip length over time', (w,h) =>
+      miniLineChartSvg(w, h, dd.years, dd.avgLengthOverTime, SB.teal, SB.ink));
+    await placeTile(2, 0, '🗓️ Trips by month', (w,h) =>
+      pdfBarChartSvg(w, h, dd.monthNames, dd.monthCounts, SB.rust, SB.ink, false));
+    await placeTile(0, 1, '🚦 How you travel', (w,h) => {
       const entries = Object.entries(dd.modeCounts).filter(([,c])=>c>0);
-      return pdfPieChartSvg(560, 296, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink);
+      return pdfPieChartSvg(w, h, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink);
     });
-    await placeTile(1, 1, '📏 Trip length', () =>
-      pdfBarChartSvg(560, 296, dd.lengthBuckets.map(b=>b[0]), dd.lengthBuckets.map(b=>b[1]), SB.tealDark, SB.ink, false));
-    await placeTile(2, 1, '🌍 By continent', () => {
+    await placeTile(1, 1, '📏 Trip length', (w,h) =>
+      pdfBarChartSvg(w, h, dd.lengthBuckets.map(b=>b[0]), dd.lengthBuckets.map(b=>b[1]), SB.tealDark, SB.ink, false));
+    await placeTile(2, 1, '🌍 By continent', (w,h) => {
       const entries = Object.entries(dd.continentCounts).sort((a,b)=>b[1]-a[1]);
-      return pdfPieChartSvg(560, 296, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.ink);
+      return pdfPieChartSvg(w, h, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.ink);
     });
-
-    const calY = gridY0 + 2*(tileH+0.15);
-    s.addText(`📅 Days travelled calendar — ${dd.calendarYear}`, { x:0.5, y:calY, w:12.33, h:0.25, fontFace:'Calibri', fontSize:10, bold:true, color:SB.inkSoft, isTextBox:true, margin:0 });
-    try{
-      const calSvg = miniCalendarHeatmapSvg(1720, 190, dd.calendarYear, dd.travelDaySet, SB.teal, SB.paperAlt);
-      const calImg = await rasterizeSvgToPngDataUrl(calSvg, 1720, 190);
-      s.addImage({ data: calImg, x:0.5, y:calY+0.25, w:12.33, h:1.2 });
-    }catch(e){ /* decorative — continue without it */ }
 
     // ---------- PASSPORT STAMPS PAGE ----------
     btn.textContent = `⏳ Building your stamp page…`;
@@ -3210,6 +3208,25 @@ function truncateToWidth(font, text, size, maxWidth){
   if(font.widthOfTextAtSize(text, size) <= maxWidth) return text;
   let t = text;
   while(t.length > 0 && font.widthOfTextAtSize(t + '…', size) > maxWidth){
+    t = t.slice(0, -1);
+  }
+  return t + '…';
+}
+// PPTX text boxes don't clip or report wrapped line counts, so a value too
+// long for its box can visually run into whatever sits below it — same
+// risk as PDF, just without pdf-lib's font metrics to measure against. A
+// real (offscreen) canvas gives an accurate-enough width using a similar
+// sans-serif face, so long values get truncated before that can happen.
+function truncateToWidthPptx(text, fontSizePt, maxWidthIn, bold){
+  const canvas = truncateToWidthPptx._canvas || (truncateToWidthPptx._canvas = document.createElement('canvas'));
+  const ctx = canvas.getContext('2d');
+  const fontPx = fontSizePt * (96/72);
+  ctx.font = `${bold?'bold ':''}${fontPx}px Calibri, Arial, sans-serif`;
+  const maxWidthPx = maxWidthIn * 96;
+  text = String(text);
+  if(ctx.measureText(text).width <= maxWidthPx) return text;
+  let t = text;
+  while(t.length > 0 && ctx.measureText(t + '…').width > maxWidthPx){
     t = t.slice(0, -1);
   }
   return t + '…';
@@ -3441,9 +3458,10 @@ async function generateScrapbookPdf(){
       const rowFontSize = compact ? 8 : 9;
 
       let ry = detailsStartY;
+      const valMaxWidth = HALF_W-210;
       rows.forEach(([label,val])=>{
         safeDrawText(p, label, { x:rx, y:ry, size:rowFontSize, font:fontR, color:rgbc(SB.inkSoft) });
-        safeDrawText(p, String(val), { x:rx+130, y:ry, size:rowFontSize, font:fontB, color:rgbc(SB.ink), maxWidth: HALF_W-210 });
+        safeDrawText(p, truncateToWidth(fontB, sanitizeForPdfFont(String(val)), rowFontSize, valMaxWidth), { x:rx+130, y:ry, size:rowFontSize, font:fontB, color:rgbc(SB.ink) });
         ry -= rowGap;
       });
       if(t.notes){
@@ -3539,44 +3557,40 @@ async function generateScrapbookPdf(){
     btn.textContent = '⏳ Building your full dashboard…';
     p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.paper); fillHalf(p, HALF_W, SB.paper);
-    safeDrawText(p, 'The Full Dashboard', { x:30, y:PAGE_H-35, size:16, font:fontSerif, color:rgbc(SB.ink) });
+    safeDrawText(p, 'The Full Dashboard', { x:30, y:PAGE_H-35, size:18, font:fontSerif, color:rgbc(SB.ink) });
 
     const dd = computeDashboardData(sorted);
-    const dTileW = (SPREAD_W-60-2*16)/3, dTileH = 190, dGapY = 20, dGridX0 = 30, dGridY0 = PAGE_H-70;
+    const dTileW = (SPREAD_W-60-2*16)/3, dTileH = 250, dGapY = 20, dGridX0 = 30, dGridY0 = PAGE_H-70;
+    // Each chart is rasterized at exactly the pixel size it will be displayed
+    // at, so the aspect ratio can never mismatch and stretch/warp the image —
+    // the SVG builder gets told the exact target size rather than a fixed
+    // size that happened to be close (but not identical) to it.
     async function placeDashTile(col, row, title, svgBuilder){
       const x = dGridX0 + col*(dTileW+16), yTop = dGridY0 - row*(dTileH+dGapY+16);
       safeDrawText(p, title, { x, y:yTop, size:9, font:fontB, color:rgbc(SB.inkSoft) });
       try{
-        const svg = svgBuilder();
+        const svg = svgBuilder(dTileW, dTileH);
         const img = await embedRasterSvg(svg, dTileW, dTileH);
         p.drawImage(img, { x, y:yTop-dTileH-6, width:dTileW, height:dTileH });
       }catch(e){ /* skip this one tile rather than fail the whole dashboard */ }
     }
 
-    await placeDashTile(0, 0, 'Distance over time', () =>
-      miniLineChartSvg(360, 190, dd.years, dd.distanceOverTime, SB.gold, SB.ink));
-    await placeDashTile(1, 0, 'Average trip length over time', () =>
-      miniLineChartSvg(360, 190, dd.years, dd.avgLengthOverTime, SB.teal, SB.ink));
-    await placeDashTile(2, 0, 'Trips by month', () =>
-      pdfBarChartSvg(360, 190, dd.monthNames, dd.monthCounts, SB.rust, SB.ink, false));
-    await placeDashTile(0, 1, 'How you travel', () => {
+    await placeDashTile(0, 0, 'Distance over time', (w,h) =>
+      miniLineChartSvg(w, h, dd.years, dd.distanceOverTime, SB.gold, SB.ink));
+    await placeDashTile(1, 0, 'Average trip length over time', (w,h) =>
+      miniLineChartSvg(w, h, dd.years, dd.avgLengthOverTime, SB.teal, SB.ink));
+    await placeDashTile(2, 0, 'Trips by month', (w,h) =>
+      pdfBarChartSvg(w, h, dd.monthNames, dd.monthCounts, SB.rust, SB.ink, false));
+    await placeDashTile(0, 1, 'How you travel', (w,h) => {
       const entries = Object.entries(dd.modeCounts).filter(([,c])=>c>0);
-      return pdfPieChartSvg(360, 190, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink);
+      return pdfPieChartSvg(w, h, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#2A4F52'], SB.ink);
     });
-    await placeDashTile(1, 1, 'Trip length', () =>
-      pdfBarChartSvg(360, 190, dd.lengthBuckets.map(b=>b[0]), dd.lengthBuckets.map(b=>b[1]), SB.tealDark, SB.ink, false));
-    await placeDashTile(2, 1, 'By continent', () => {
+    await placeDashTile(1, 1, 'Trip length', (w,h) =>
+      pdfBarChartSvg(w, h, dd.lengthBuckets.map(b=>b[0]), dd.lengthBuckets.map(b=>b[1]), SB.tealDark, SB.ink, false));
+    await placeDashTile(2, 1, 'By continent', (w,h) => {
       const entries = Object.entries(dd.continentCounts).sort((a,b)=>b[1]-a[1]);
-      return pdfPieChartSvg(360, 190, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.ink);
+      return pdfPieChartSvg(w, h, entries.map(e=>e[0]), entries.map(e=>e[1]), [SB.teal,SB.gold,SB.rust,'#6B5B95','#4a7c59','#2a4f52','#8899aa'], SB.ink);
     });
-
-    const calY = dGridY0 - 2*(dTileH+dGapY+16);
-    safeDrawText(p, `Days travelled calendar — ${dd.calendarYear}`, { x:30, y:calY, size:9, font:fontB, color:rgbc(SB.inkSoft) });
-    try{
-      const calSvg = miniCalendarHeatmapSvg(SPREAD_W-60, 100, dd.calendarYear, dd.travelDaySet, SB.teal, SB.paperAlt);
-      const calImg = await embedRasterSvg(calSvg, SPREAD_W-60, 100);
-      p.drawImage(calImg, { x:30, y:calY-106, width:SPREAD_W-60, height:100 });
-    }catch(e){ /* decorative — continue without it */ }
 
     // ---------- STAMPS COLLECTED SPREAD (both halves as one page) ----------
     btn.textContent = '⏳ Building your stamp page…';
