@@ -3400,6 +3400,7 @@ async function generateScrapbookPdf(){
   const rgbc = (hex) => hexToRgb01(hex, PDFLib);
   const HALF_W = 432, PAGE_H = 648; // 6x9in per page, a common book trim size — spread is 12x9in
   const SPREAD_W = HALF_W*2;
+  const logoSrc = (document.querySelector('.logo-home-btn img') || {}).src || null;
 
   try{
     const pdf = await PDFDocument.create();
@@ -3436,6 +3437,14 @@ async function generateScrapbookPdf(){
     // ---------- TITLE SPREAD ----------
     let p = pdf.addPage([SPREAD_W, PAGE_H]);
     fillHalf(p, 0, SB.ink); fillHalf(p, HALF_W, SB.ink); spine(p);
+    if(logoSrc){
+      try{
+        const bytes = Uint8Array.from(atob(logoSrc.split(',')[1]), c => c.charCodeAt(0));
+        const logoImg = await pdf.embedPng(bytes);
+        const logoSize = 50;
+        p.drawImage(logoImg, { x: HALF_W + (HALF_W-logoSize)/2, y: PAGE_H-210, width: logoSize, height: logoSize });
+      }catch(e){ /* logo is decorative — continue without it */ }
+    }
     safeDrawText(p, 'WAYPOINTS', { x:HALF_W+40, y:PAGE_H-260, size:34, font:fontSerif, color:rgbc(SB.paper) });
     safeDrawText(p, 'A Travel Scrapbook', { x:HALF_W+40, y:PAGE_H-290, size:14, font:fontItalic, color:rgbc(SB.gold) });
     safeDrawText(p, `${sorted.length} trips  -  ${countries.size} countries  -  ${continents.size} continents`, { x:HALF_W+40, y:PAGE_H-320, size:10, font:fontR, color:rgbc(SB.paper) });
